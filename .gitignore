@@ -122,3 +122,9 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+
+/self-material/
+
+*.md
+!README.md
