@@ -1,0 +1,1230 @@
+\documentclass[11pt,aspectratio=169]{beamer}
+\usetheme{SimplePlus}
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath,amssymb,mathtools}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{appendixnumberbeamer}
+\usepackage{hyperref}
+
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\Prob}{\mathbb{P}}
+\newcommand{\Var}{\mathrm{Var}}
+\newcommand{\Cov}{\mathrm{Cov}}
+\newcommand{\ATT}{\mathrm{ATT}}
+\newcommand{\ATE}{\mathrm{ATE}}
+\newcommand{\TOT}{\mathrm{TOT}}
+\newcommand{\MMSE}{\mathrm{MMSE}}
+\newcommand{\indep}{\perp\!\!\!\perp}
+\newcommand{\argmin}{\mathop{\mathrm{arg\,min}}}
+\newcommand{\derivbutton}[1]{\vspace{0.4em}\hfill\hyperlink{app:#1}{\beamerbutton{Appendix details}}}
+\newcommand{\backbutton}[1]{\vspace{0.4em}\hfill\hyperlink{main:#1}{\beamerbutton{Back to main slide}}}
+
+\title{Applied Econometrics: Session 2}
+\subtitle{Making Regression Make Sense: Selection on Observables}
+\author{PhD Intensive Course}
+\institute{Lecture 2}
+\date{\today}
+
+\begin{document}
+
+\begin{frame}
+  \titlepage
+\end{frame}
+
+
+
+\begin{frame}{Why This Lecture Matters}
+  Lecture 1 gave the causal language: potential outcomes, selection bias, and random assignment.
+  \vspace{0.4em}
+
+  Lecture 2 asks a harder question:
+  \begin{block}{Core question}
+    When we run a regression in observational data, what does that coefficient mechanically estimate, and when can we read it as causal?
+  \end{block}
+
+  \begin{itemize}
+    \item Regression is always a statistical approximation device.
+    \item Causality is an extra layer, not a free gift from software.
+  \end{itemize}
+\end{frame}
+
+\section{Regression Fundamentals}
+
+\begin{frame}{Regression as a Summary of the CEF}
+  \begin{itemize}
+    \item Start from the object we want to summarize: the conditional expectation function.
+    \item Then define regression as a disciplined linear approximation to that object.
+    \item Only after that do we ask whether the CEF itself is causal.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Why Regression Shows Up Everywhere}
+  \begin{itemize}
+    \item In experiments, regression with a treatment dummy reproduces treatment-control mean differences.
+    \item In observational work, regression is a control strategy for observed confounders.
+    \item In descriptive work, regression is a compact summary of how averages vary with covariates.
+  \end{itemize}
+  \begin{block}{Core point}
+    Before arguing about causal interpretation, we should understand what regression always does mechanically.
+  \end{block}
+\end{frame}
+
+\begin{frame}{The Conditional Expectation Function}
+  \hypertarget{main:cef}{}
+  For a scalar outcome \(Y_i\) and covariates \(X_i\), define
+  \[
+    m(x) \equiv \E[Y_i \mid X_i=x].
+  \]
+  \begin{itemize}
+    \item The CEF is the average value of \(Y_i\) for units with the same covariates.
+    \item If \(X_i\) is binary, the CEF is just two cell means.
+    \item If \(X_i\) is continuous, the CEF is a function, often nonlinear.
+    \item The CEF is about averages, not automatically about causality.
+  \end{itemize}
+  \begin{block}{Example}
+    \(m(s)=\E[\log w_i \mid S_i=s]\) is the average log wage of workers with \(s\) years of schooling.
+  \end{block}
+\end{frame}
+
+\begin{frame}{Law of Iterated Expectations}
+  \hypertarget{main:lie}{}
+  \[
+    \E[Y_i]=\E\{\E[Y_i \mid X_i]\}.
+  \]
+  \begin{itemize}
+    \item First average within covariate groups.
+    \item Then average those group means using the distribution of \(X_i\).
+    \item This identity is the bridge between cell-specific effects and population averages.
+  \end{itemize}
+  \begin{block}{Intuition}
+    An unconditional average is just a weighted average of conditional averages.
+  \end{block}
+  \derivbutton{cef-foundations}
+\end{frame}
+
+\begin{frame}{CEF Decomposition Property}
+  \hypertarget{main:cef-decomp}{}
+  \[
+    Y_i = \E[Y_i \mid X_i] + \varepsilon_i,
+    \qquad
+    \E[\varepsilon_i \mid X_i]=0.
+  \]
+  \begin{itemize}
+    \item The first term is the part explained by \(X_i\).
+    \item The residual is mean-independent of \(X_i\).
+    \item Therefore the residual is uncorrelated with any function of \(X_i\).
+  \end{itemize}
+  \begin{block}{Why this matters}
+    The CEF is not just descriptive; it is the unique decomposition of outcomes into an explained part and an orthogonal leftover.
+  \end{block}
+  \derivbutton{cef-foundations}
+\end{frame}
+
+\begin{frame}{The CEF Is the Best Unrestricted Predictor}
+  \[
+    \E[Y_i \mid X_i]
+    =
+    \argmin_{m(X_i)} \E\left[\left(Y_i-m(X_i)\right)^2\right].
+  \]
+  \begin{itemize}
+    \item If you may use any function of \(X_i\), the CEF minimizes mean squared prediction error.
+    \item This is an \(\MMSE\) statement, not a causal statement.
+    \item The same logic explains why averages are central objects in econometrics.
+  \end{itemize}
+  \begin{block}{Takeaway}
+    The CEF is the best possible predictor given the information in \(X_i\), but it may still be nonlinear and causally meaningless.
+  \end{block}
+\end{frame}
+
+\begin{frame}{Population Regression Is a Linear Approximation Problem}
+  \hypertarget{main:pop-reg}{}
+  Define the population regression coefficient vector by
+  \[
+    \beta
+    =
+    \argmin_b \E\left[\left(Y_i-X_i'b\right)^2\right].
+  \]
+  First-order conditions imply
+  \[
+    \beta = \E[X_iX_i']^{-1}\E[X_iY_i].
+  \]
+  If \(e_i \equiv Y_i-X_i'\beta\), then
+  \[
+    \E[X_i e_i]=0.
+  \]
+  \begin{itemize}
+    \item The regression residual is orthogonal to the regressors by construction.
+    \item This orthogonality does not by itself imply causality.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Regression Anatomy}
+  \hypertarget{main:anatomy}{}
+  In the simple regression of \(Y_i\) on a constant and \(x_i\),
+  \[
+    \beta_1=\frac{\Cov(Y_i,x_i)}{\Var(x_i)}.
+  \]
+  In a multivariate regression, the coefficient on \(x_{ki}\) is
+  \[
+    \beta_k=\frac{\Cov(Y_i,\tilde{x}_{ki})}{\Var(\tilde{x}_{ki})},
+  \]
+  where \(\tilde{x}_{ki}\) is the residual from regressing \(x_{ki}\) on all other covariates.
+  \begin{itemize}
+    \item Every multiple-regression coefficient is a bivariate slope after partialling out other regressors.
+    \item This is the algebraic core of Frisch-Waugh-Lovell intuition.
+  \end{itemize}
+  \derivbutton{anatomy-proof}
+\end{frame}
+
+\begin{frame}{Three Reasons Regression Is Useful}
+  \hypertarget{main:reg-just}{}
+  \begin{enumerate}
+    \item If the CEF is linear, regression recovers it exactly.
+    \item Even if the CEF is nonlinear, regression is the best linear predictor of \(Y_i\).
+    \item Most importantly, regression is the best linear approximation to the CEF itself.
+  \end{enumerate}
+  \[
+    \beta
+    =
+    \argmin_b
+    \E\left[\left(\E[Y_i \mid X_i]-X_i'b\right)^2\right].
+  \]
+  \begin{block}{Preferred interpretation}
+    Regression is best thought of as approximating the CEF, not as solving a philosophical problem about individual prediction.
+  \end{block}
+  \derivbutton{reg-justification}
+\end{frame}
+
+\begin{frame}{Saturated Models and Interactions}
+  \begin{itemize}
+    \item If all covariates are discrete and we include a dummy for every covariate cell, regression is saturated.
+    \item Saturated regression reproduces the cell means exactly.
+    \item Main effects without interactions impose additivity across covariates.
+    \item Interactions matter whenever the effect of one covariate depends on another.
+  \end{itemize}
+  \begin{block}{Student warning}
+    ``Controlling for \(X\)'' is not one thing. Controlling flexibly with interactions is very different from forcing a linear or additive specification.
+  \end{block}
+\end{frame}
+
+\begin{frame}{Population First, Sample Second}
+  \begin{itemize}
+    \item The population coefficient \(\beta\) is the object of interest.
+    \item The sample estimator is \(\hat{\beta}=(X'X)^{-1}X'Y\).
+    \item Under random sampling and standard regularity conditions, \(\hat{\beta}\) converges to \(\beta\).
+    \item Heteroskedasticity affects precision formulas, not the meaning of \(\beta\).
+  \end{itemize}
+  \begin{block}{Course sequencing}
+    We will discuss inference in more detail later; today the priority is what the estimand means.
+  \end{block}
+\end{frame}
+
+\section{Regression and Causality}
+
+\begin{frame}{When Does Regression Become Causal?}
+  \begin{itemize}
+    \item Regression always approximates a CEF.
+    \item But only a causal CEF can justify causal language for the coefficient.
+    \item The key assumption is conditional independence, also called selection on observables.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{From Predictive CEFs to Causal CEFs}
+  \begin{itemize}
+    \item A predictive CEF summarizes average outcomes across observed groups.
+    \item A causal CEF summarizes average potential outcomes for a fixed reference population.
+    \item To move from one to the other, we need a design or assumption that removes selection bias.
+  \end{itemize}
+  \begin{block}{Translation rule}
+    Regression inherits its interpretation from the CEF it approximates. If the CEF is causal, regression is causal. If the CEF is not causal, regression is not causal.
+  \end{block}
+\end{frame}
+
+\begin{frame}{Selection Bias Returns in Observational Data}
+  \hypertarget{main:cia}{}
+  Let \(C_i\) denote college attendance. Then
+  \[
+  \E[Y_i \mid C_i=1]-\E[Y_i \mid C_i=0]
+  =
+  \underbrace{\E[Y_{1i}-Y_{0i} \mid C_i=1]}_{\ATT}
+  +
+  \underbrace{\E[Y_{0i} \mid C_i=1]-\E[Y_{0i} \mid C_i=0]}_{\text{selection bias}}.
+  \]
+  \begin{itemize}
+    \item The observed difference combines a causal term and a non-causal baseline term.
+    \item In schooling applications, the bias is often thought to be positive because college-goers would earn more even without college.
+  \end{itemize}
+  \derivbutton{cia-proof}
+\end{frame}
+
+\begin{frame}{The Conditional Independence Assumption}
+  \[
+    \{Y_{0i},Y_{1i}\}\indep C_i \mid X_i.
+  \]
+  \begin{itemize}
+    \item Conditional on observed covariates \(X_i\), treatment is as good as random.
+    \item Equivalently, once we hold \(X_i\) fixed, treated and untreated units are comparable in potential outcomes.
+    \item This is why the assumption is called selection on observables.
+  \end{itemize}
+  \begin{block}{Important}
+    CIA is not testable from the observed outcome alone. It is a research-design claim about the treatment assignment process.
+  \end{block}
+\end{frame}
+
+\begin{frame}{What CIA Buys Us}
+  Under CIA,
+  \[
+    \E[Y_i \mid X_i,C_i=1]-\E[Y_i \mid X_i,C_i=0]
+    =
+    \E[Y_{1i}-Y_{0i} \mid X_i].
+  \]
+  \begin{itemize}
+    \item Within an \(X_i\)-cell, treated and untreated units can be compared causally.
+    \item Selection bias vanishes after conditioning on \(X_i\).
+    \item The price is strong: every confounder that matters must be observed and correctly controlled.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Multi-Valued Treatment and Potential Outcome Schedules}
+  When treatment intensity is \(S_i\) rather than a binary indicator, write
+  \[
+    Y_{si}\equiv f_i(s).
+  \]
+  CIA becomes
+  \[
+    Y_{si}\indep S_i \mid X_i \quad \text{for all } s.
+  \]
+  Then
+  \[
+    \E[Y_i \mid X_i,S_i=s]-\E[Y_i \mid X_i,S_i=s-1]
+    =
+    \E[f_i(s)-f_i(s-1)\mid X_i].
+  \]
+  \begin{itemize}
+    \item This is the logic behind causal interpretations of schooling regressions.
+    \item The treatment effect may vary with both \(s\) and \(X_i\).
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{From \(X\)-Specific Effects to Population Effects}
+  The law of iterated expectations turns cell-specific causal effects into summary effects:
+  \[
+    \ATE
+    =
+    \E\left\{\E[Y_i \mid X_i,S_i=s]-\E[Y_i \mid X_i,S_i=s-1]\right\}.
+  \]
+  The effect on those actually treated at \(s\) uses different weights:
+  \[
+    \E\left\{\E[Y_i \mid X_i,S_i=s]-\E[Y_i \mid X_i,S_i=s-1]\mid S_i=s\right\}.
+  \]
+  \begin{itemize}
+    \item Same cell-specific effects.
+    \item Different target populations.
+    \item Different weights over \(X_i\).
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{A Linear Causal Model That Leads to Regression}
+  Suppose potential outcomes satisfy
+  \[
+    f_i(s)=\alpha+\rho s+\eta_i.
+  \]
+  If
+  \[
+    \eta_i = X_i'\gamma + v_i
+    \qquad \text{and CIA holds given } X_i,
+  \]
+  then the observed outcome obeys
+  \[
+    Y_i=\alpha+\rho S_i+X_i'\gamma+v_i,
+  \]
+  with \(v_i\) orthogonal to \(S_i\) and \(X_i\).
+  \begin{block}{Interpretation}
+    In this special case, the regression coefficient \(\rho\) is the causal return to one additional unit of treatment.
+  \end{block}
+  \derivbutton{cia-proof}
+\end{frame}
+
+\begin{frame}{What Counts as a Good Control?}
+  Good controls are variables that:
+  \begin{itemize}
+    \item are determined before treatment,
+    \item help explain both treatment assignment and outcomes,
+    \item make the CIA more plausible,
+    \item do not themselves lie on the causal path from treatment to outcome.
+  \end{itemize}
+  \begin{block}{Rule of thumb}
+    Good controls are confounders or proxies for confounders. They are not consequences of treatment.
+  \end{block}
+\end{frame}
+
+\begin{frame}{The Omitted Variables Bias Formula}
+  \hypertarget{main:ovb}{}
+  Suppose the long regression is
+  \[
+    Y_i=\alpha+\rho S_i+A_i'\gamma+\varepsilon_i,
+  \]
+  where \(A_i\) denotes omitted ability or family-background variables.
+  Then the short-regression slope satisfies
+  \[
+    \frac{\Cov(Y_i,S_i)}{\Var(S_i)}
+    =
+    \rho+\gamma'\delta_{AS},
+  \]
+  where \(\delta_{AS}\) is the vector of coefficients from regressions of \(A_i\) on \(S_i\).
+  \begin{block}{Memorize this}
+    Short \(=\) long \(+\) effect of omitted \(\times\) correlation of omitted with included.
+  \end{block}
+  \derivbutton{ovb-proof}
+\end{frame}
+
+\begin{frame}{Sign Intuition for OVB}
+  \begin{itemize}
+    \item If omitted ability raises wages, then elements of \(\gamma\) are positive.
+    \item If ability is positively correlated with schooling, then \(\delta_{AS}\) is positive.
+    \item The short schooling regression overstates the causal return.
+  \end{itemize}
+  \begin{block}{But do not overlearn the sign}
+    OVB is not always upward. If omitted factors are negatively correlated with schooling, bias can go the other way.
+  \end{block}
+\end{frame}
+
+\begin{frame}{Illustrative Schooling Example}
+  \begin{center}
+    \begin{tabular}{@{}lc@{}}
+      \toprule
+      Specification & Schooling Coefficient \\
+      \midrule
+      No controls & 0.132 \\
+      + Age dummies & 0.131 \\
+      + Family background and demographics & 0.114 \\
+      + AFQT score & 0.087 \\
+      + Occupation dummies & 0.066 \\
+      \bottomrule
+    \end{tabular}
+  \end{center}
+  \begin{itemize}
+    \item The drop from \(0.132\) to \(0.087\) is consistent with positive omitted-ability bias.
+    \item The final drop after adding occupation dummies is harder to interpret.
+  \end{itemize}
+  \begin{block}{Why harder?}
+    Occupation is likely affected by schooling, so it is not a clean pre-treatment control.
+  \end{block}
+\end{frame}
+
+\begin{frame}{Bad Controls}
+  \hypertarget{main:bad-control}{}
+  A bad control is a variable that is itself an outcome of the treatment.
+  \begin{itemize}
+    \item Example: controlling for occupation in a regression of wages on college.
+    \item College affects occupation.
+    \item Conditioning on occupation therefore changes the composition of the comparison groups.
+  \end{itemize}
+  \[
+    \E[Y_i \mid W_i=1,C_i=1]-\E[Y_i \mid W_i=1,C_i=0]
+  \]
+  is generally not a causal effect.
+  \begin{block}{Verbal summary}
+    We stop comparing like with like because the treatment changes who enters the conditioned-on group.
+  \end{block}
+  \derivbutton{bad-control-proof}
+\end{frame}
+
+\begin{frame}{Proxy Controls Can Also Go Bad}
+  \begin{itemize}
+    \item Suppose you cannot observe latent ability directly.
+    \item You may be tempted to control for a post-treatment proxy, such as later occupation or post-schooling test scores.
+    \item That proxy may partly absorb the very channel through which treatment works.
+  \end{itemize}
+  \begin{block}{Safe question}
+    Was this variable already fixed before treatment was chosen?
+  \end{block}
+  \begin{block}{Unsafe question}
+    Is this variable merely correlated with the outcome?
+  \end{block}
+\end{frame}
+
+\begin{frame}{Checklist for Choosing Controls}
+  Before adding a variable \(X\) to a causal regression, ask:
+  \begin{enumerate}
+    \item Was \(X\) determined before treatment?
+    \item Could treatment itself change \(X\)?
+    \item Does conditioning on \(X\) make assignment more plausibly as-good-as-random?
+    \item Do we still have overlap between treated and control units after conditioning?
+  \end{enumerate}
+  \begin{block}{Student habit to build}
+    Do not say ``I controlled for everything available.'' Say exactly why each control belongs in the design.
+  \end{block}
+\end{frame}
+
+\section{Matching and Propensity Scores}
+
+\begin{frame}{Heterogeneity, Matching, and Propensity Scores}
+  \begin{itemize}
+    \item Constant treatment effects and linear CEFs are convenient but not necessary.
+    \item Under CIA, matching and regression solve the same comparability problem.
+    \item The main differences are how they average cell-specific effects and how much modeling they impose.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Why Heterogeneity Changes the Discussion}
+  \begin{itemize}
+    \item People may respond differently to the same treatment.
+    \item The causal CEF may be nonlinear even if the average effect is well-defined.
+    \item Regression then becomes a weighted average summary of many local comparisons.
+  \end{itemize}
+  \begin{block}{Key insight}
+    Instead of abandoning regression, reinterpret it as a computationally attractive matching estimator.
+  \end{block}
+\end{frame}
+
+\begin{frame}{Matching the Effect of Treatment on the Treated}
+  \hypertarget{main:matching}{}
+  With binary treatment \(D_i\), define
+  \[
+    \delta_X \equiv \E[Y_i \mid X_i,D_i=1]-\E[Y_i \mid X_i,D_i=0].
+  \]
+  Under CIA,
+  \[
+    \TOT
+    =
+    \E[Y_{1i}-Y_{0i}\mid D_i=1]
+    =
+    \E[\delta_X \mid D_i=1].
+  \]
+  If \(X_i\) is discrete,
+  \[
+    \TOT = \sum_x \delta_x \Prob(X_i=x \mid D_i=1).
+  \]
+  \begin{itemize}
+    \item Matching constructs \(\delta_x\) cell by cell.
+    \item Then it averages those cell effects using treated-group weights.
+  \end{itemize}
+  \derivbutton{matching-proof}
+\end{frame}
+
+\begin{frame}{ATT and ATE Differ by Weights}
+  Under CIA,
+  \[
+    \ATE = \E[\delta_X] = \sum_x \delta_x \Prob(X_i=x),
+  \]
+  while
+  \[
+    \TOT = \sum_x \delta_x \Prob(X_i=x \mid D_i=1).
+  \]
+  \begin{itemize}
+    \item Same covariate-specific treatment effects.
+    \item Different weighting schemes.
+    \item Therefore \(\ATE\) and \(\TOT\) need not be numerically close.
+  \end{itemize}
+  \begin{block}{Interpretation}
+    \(\ATE\) answers ``what would treatment do for the population?'' while \(\TOT\) answers ``what did treatment do for those actually treated?''
+  \end{block}
+\end{frame}
+
+\begin{frame}{Saturated Regression as a Matching Device}
+  Consider the regression
+  \[
+    Y_i=\sum_x d_{ix}\beta_x+\delta_R D_i+\varepsilon_i,
+  \]
+  where \(d_{ix}\) is a dummy for the cell \(X_i=x\).
+  \begin{itemize}
+    \item This regression saturates the model in \(X_i\).
+    \item It uses the same CIA logic as exact covariate matching.
+    \item The coefficient \(\delta_R\) is not arbitrary; it is a weighted average of the same cell-specific effects \(\delta_x\).
+  \end{itemize}
+  \derivbutton{reg-matching-proof}
+\end{frame}
+
+\begin{frame}{Regression Is Variance-Weighted Matching}
+  \hypertarget{main:reg-weight}{}
+  A useful result is that
+  \[
+    \delta_R
+    =
+    \frac{\E[\sigma_D^2(X_i)\delta_X]}{\E[\sigma_D^2(X_i)]},
+  \]
+  where
+  \[
+    \sigma_D^2(X_i)=\Var(D_i \mid X_i)=p(X_i)(1-p(X_i)).
+  \]
+  \begin{itemize}
+    \item Regression puts more weight on cells where treatment status varies a lot.
+    \item Those are cells with both treated and control units, especially when treatment probability is near one half.
+    \item Matching for \(\TOT\) instead emphasizes cells where treated units are common.
+  \end{itemize}
+  \derivbutton{reg-matching-proof}
+\end{frame}
+
+\begin{frame}{Why Different Weights Matter}
+  \begin{itemize}
+    \item If treatment effects are constant across covariate cells, all reasonable averages coincide.
+    \item If treatment effects vary with \(X_i\), weighting matters.
+    \item In the military-service application, those most likely to serve seem to benefit least, so \(\TOT\) matching estimates are smaller than regression estimates.
+  \end{itemize}
+  \begin{block}{Exam takeaway}
+    ``Regression and matching disagree'' does not automatically mean one is wrong. They may be targeting different weighted averages.
+  \end{block}
+\end{frame}
+
+\begin{frame}{Common Support}
+  \begin{itemize}
+    \item For causal comparisons at covariate value \(x\), we need both treated and untreated observations there.
+    \item Formally, for binary treatment we want
+    \[
+      0<\Prob(D_i=1 \mid X_i=x)<1.
+    \]
+    \item If a cell contains only treated or only untreated units, \(\delta_x\) is undefined.
+  \end{itemize}
+  \begin{block}{Good news}
+    In theory, both matching and saturated regression put zero weight on unsupported cells.
+  \end{block}
+  \begin{block}{Bad news}
+    In practice, unsaturated parametric regressions can extrapolate into unsupported regions.
+  \end{block}
+\end{frame}
+
+\begin{frame}{The Propensity Score Theorem}
+  \hypertarget{main:pscore}{}
+  Define the propensity score
+  \[
+    p(X_i)\equiv \E[D_i \mid X_i]=\Prob(D_i=1 \mid X_i).
+  \]
+  Rosenbaum and Rubin's theorem says:
+  \begin{block}{Propensity-score theorem}
+    If \(Y_{0i},Y_{1i}\indep D_i \mid X_i\), then \(Y_{0i},Y_{1i}\indep D_i \mid p(X_i)\).
+  \end{block}
+  \begin{itemize}
+    \item A high-dimensional covariate vector can be replaced by a scalar balancing score.
+    \item This is dimension reduction, not magic.
+  \end{itemize}
+  \derivbutton{pscore-proof}
+\end{frame}
+
+\begin{frame}{How the Propensity Score Is Used}
+  Under CIA,
+  \[
+    \TOT
+    =
+    \E\left\{
+      \E[Y_i \mid p(X_i),D_i=1]-\E[Y_i \mid p(X_i),D_i=0]
+      \mid D_i=1
+    \right\}.
+  \]
+  Practical implementations:
+  \begin{itemize}
+    \item match treated and control units with similar estimated scores,
+    \item stratify observations into score bins,
+    \item weight observations by inverse probabilities,
+    \item screen observations to impose common support before regression.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Inverse-Probability Weighting Identities}
+  \hypertarget{main:ipw}{}
+  Under CIA,
+  \[
+    \ATE
+    =
+    \E\left[
+      \frac{Y_iD_i}{p(X_i)}
+      -
+      \frac{Y_i(1-D_i)}{1-p(X_i)}
+    \right].
+  \]
+  Equivalently,
+  \[
+    \ATE
+    =
+    \E\left[
+      \frac{(D_i-p(X_i))Y_i}{p(X_i)(1-p(X_i))}
+    \right].
+  \]
+  For the treated effect,
+  \[
+    \TOT
+    =
+    \E\left[
+      \frac{(D_i-p(X_i))Y_i}{(1-p(X_i))\Prob(D_i=1)}
+    \right].
+  \]
+  \derivbutton{ipw-proof}
+\end{frame}
+
+\begin{frame}{Regression, Matching, and IPW Are One Family}
+  A unified way to write these estimands is:
+  \[
+    \E\left\{
+      g(X_i)\left[
+        \frac{Y_iD_i}{p(X_i)}
+        -
+        \frac{Y_i(1-D_i)}{1-p(X_i)}
+      \right]
+    \right\}.
+  \]
+  \begin{itemize}
+    \item \(g(X_i)=1\) gives the ATE.
+    \item \(g(X_i)=p(X_i)/\Prob(D_i=1)\) gives the treated effect.
+    \item A regression-type choice of \(g(X_i)\) reproduces the regression estimand.
+  \end{itemize}
+  \begin{block}{Bottom line}
+    These methods differ mostly in how they weight the same underlying cell-level comparisons.
+  \end{block}
+\end{frame}
+
+\begin{frame}{What to Conclude About Propensity Scores}
+  \begin{itemize}
+    \item Propensity scores are attractive when treatment assignment is easier to model than outcomes.
+    \item They help reduce dimensionality and organize overlap diagnostics.
+    \item But they are not automatically more causal or more robust than regression.
+    \item Regression with flexible controls often performs very well.
+  \end{itemize}
+  \begin{block}{Practical recommendation}
+    Start with regression. Use propensity-score tools as complements, especially for overlap screening and dimension reduction.
+  \end{block}
+\end{frame}
+
+\begin{frame}{NSW Lesson: Design Beats Method Branding}
+  \begin{itemize}
+    \item Lalonde showed naive observational comparisons can fail badly.
+    \item Dehejia and Wahba showed better overlap and better covariate control can move observational estimates toward the experimental benchmark.
+    \item Careful regression control plus support screening can be as persuasive as propensity-score matching.
+  \end{itemize}
+  \begin{block}{Applied lesson}
+    Do not ask ``Should I use regression or propensity scores?'' Ask ``What makes CIA plausible here, and where is the common support?''
+  \end{block}
+\end{frame}
+
+\section{Practical Issues}
+
+\begin{frame}{Practical Issues That Cause Confusion}
+  \begin{itemize}
+    \item Sample weights
+    \item Grouped-data regressions
+    \item Limited dependent variables
+    \item Conditional-on-positive comparisons
+  \end{itemize}
+  \begin{block}{Theme}
+    Many practical habits are defensible only if they move us closer to the population estimand we actually care about.
+  \end{block}
+\end{frame}
+
+\begin{frame}{When Should You Weight a Regression?}
+  \begin{itemize}
+    \item Use sampling weights when the sample is nonrandom and weights are inverse sampling probabilities.
+    \item Then weighted least squares targets the population regression function rather than the sample-specific one.
+    \item Use group-size weights when regressing cell means and you want to recover the microdata regression.
+  \end{itemize}
+  \begin{block}{Rule of thumb}
+    Weight when weighting makes your sample look more like the population target.
+  \end{block}
+\end{frame}
+
+\begin{frame}{Grouped Data and Weighting by Cell Size}
+  \hypertarget{main:group-weight}{}
+  Suppose you observe cell means \(\bar{y}_x=\E[Y_i \mid X_i=x]\) and cell frequencies \(n_x\).
+  \begin{itemize}
+    \item Regressing \(\bar{y}_x\) on \(x\) with weights \(n_x\) reproduces the microdata regression.
+    \item Unweighted regression on cell means changes the estimand because small and large cells get equal influence.
+  \end{itemize}
+  \begin{block}{Interpretation}
+    Weighting by cell size is not a cosmetic choice; it determines whether we are approximating the population or a fictional equally-weighted set of cells.
+  \end{block}
+  \derivbutton{grouped-proof}
+\end{frame}
+
+\begin{frame}{Why We Are Skeptical of Weighting for Heteroskedasticity}
+  \begin{itemize}
+    \item Heteroskedasticity does not change the population regression coefficient.
+    \item Poorly estimated variance weights can hurt finite-sample performance.
+    \item If the CEF is nonlinear, weighted least squares may approximate a different object from OLS.
+  \end{itemize}
+  \begin{block}{Practical advice}
+    Usually keep OLS for the point estimate and use heteroskedasticity-robust standard errors for inference.
+  \end{block}
+\end{frame}
+
+\begin{frame}{Limited Dependent Variables Do Not Kill OLS}
+  \begin{itemize}
+    \item If treatment is randomly assigned, the coefficient on a treatment dummy still equals the difference in means.
+    \item This remains true whether \(Y_i\) is continuous, binary, or nonnegative.
+    \item For a binary outcome, the difference in means is also a difference in probabilities.
+  \end{itemize}
+  \[
+    \E[Y_i \mid D_i=1]-\E[Y_i \mid D_i=0]=\E[Y_{1i}-Y_{0i}].
+  \]
+  \begin{block}{Message}
+    The outcome being discrete or bounded changes interpretation, not the validity of the mean comparison itself.
+  \end{block}
+\end{frame}
+
+\begin{frame}{Why People Use Probit and Tobit Anyway}
+  \begin{itemize}
+    \item Nonlinear models can fit bounded outcomes more naturally.
+    \item Probit fitted values stay between zero and one.
+    \item Tobit fitted values stay nonnegative under the latent model.
+  \end{itemize}
+  \begin{block}{But}
+    The raw coefficients in Probit or Tobit are not the causal effects on observed outcomes. They must be converted into finite differences or average derivatives.
+  \end{block}
+\end{frame}
+
+\begin{frame}{Marginal Effects Are the Right Comparison Object}
+  For a nonlinear model with covariates, compare OLS to
+  \[
+    \E\left\{\E[Y_i \mid X_i,D_i=1]-\E[Y_i \mid X_i,D_i=0]\right\},
+  \]
+  not to latent-index coefficients.
+  \begin{itemize}
+    \item OLS estimates an average effect on the observed outcome.
+    \item Probit and Tobit coefficients live on latent scales.
+    \item Once converted to marginal effects, nonlinear and OLS estimates are often quite similar in practice.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Conditional-on-Positive Effects Are Another Bad-Control Problem}
+  \hypertarget{main:cop}{}
+  For a nonnegative outcome,
+  \[
+    \E[Y_i \mid D_i]
+    =
+    \E[Y_i \mid Y_i>0,D_i]\Prob(Y_i>0 \mid D_i).
+  \]
+  Some researchers then compare
+  \[
+    \E[Y_i \mid Y_i>0,D_i=1]-\E[Y_i \mid Y_i>0,D_i=0].
+  \]
+  \begin{itemize}
+    \item This conditions on an outcome that treatment may itself change.
+    \item So it is a bad-control comparison, even in a randomized experiment.
+  \end{itemize}
+  \derivbutton{cop-proof}
+\end{frame}
+
+\begin{frame}{Why COP Effects Are Not Causal}
+  \begin{itemize}
+    \item Treatment changes who is in the \(Y_i>0\) group.
+    \item Therefore treated positives and control positives are different populations.
+    \item Even if the true treatment effect were zero, the conditional-on-positive comparison could still be nonzero.
+  \end{itemize}
+  \begin{block}{Safe object}
+    The average effect on the observed outcome.
+  \end{block}
+  \begin{block}{Unsafe object}
+    The effect among those with positive observed outcomes after treatment assignment has already changed that set.
+  \end{block}
+\end{frame}
+
+\begin{frame}{When Tobit-Type Models Do Make Sense}
+  \begin{itemize}
+    \item Tobit is most defensible under true censoring.
+    \item Example: earnings are top-coded in a survey, but the latent uncensored earnings are the object of interest.
+    \item It is much less convincing when zeros are genuine outcomes, such as zero medical spending or zero hours worked.
+  \end{itemize}
+  \begin{block}{Practical position}
+    If the latent variable has no meaningful empirical interpretation, do not hide behind it.
+  \end{block}
+\end{frame}
+
+\begin{frame}{Practical Modeling Rules for Students}
+  \begin{enumerate}
+    \item Start with the average effect on the observed outcome.
+    \item Use flexible pre-treatment controls and robust standard errors.
+    \item Check overlap before trusting regression or matching.
+    \item Treat Probit/Tobit as optional curve-fitting devices, not automatic upgrades.
+    \item Never condition on variables created by treatment unless you have a very explicit structural reason.
+  \end{enumerate}
+\end{frame}
+
+\section{Synthesis}
+
+\begin{frame}{Integrated Summary of Chapter 3}
+  \begin{itemize}
+    \item The CEF is the fundamental population object; regression is its best linear approximation.
+    \item A regression becomes causal only when the underlying CEF is causal, typically under CIA plus good controls.
+    \item OVB explains mechanically why coefficients move when controls are added or omitted.
+    \item Matching, propensity-score weighting, and regression all average cell-specific causal effects using different weights.
+    \item Limited dependent variables change presentation and modeling choices, but not the centrality of average effects.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{What Students Should Be Able to Do After This Lecture}
+  \begin{itemize}
+    \item Define the CEF and explain why regression approximates it.
+    \item State the conditional independence assumption in words and symbols.
+    \item Use the omitted variables bias formula to reason about coefficient movements.
+    \item Explain why occupation can be a bad control in a schooling regression.
+    \item Distinguish \(\ATE\), \(\TOT\), and regression-weighted effects.
+    \item Explain what the propensity score does and does not do.
+    \item Defend when to use weights, and when not to.
+    \item Explain why conditional-on-positive comparisons are not generally causal.
+  \end{itemize}
+\end{frame}
+
+\appendix
+
+\begin{frame}{Appendix Map}
+  \begin{itemize}
+    \item A1: Law of iterated expectations and CEF decomposition
+    \item A2: Why regression approximates the CEF
+    \item A3: Regression anatomy
+    \item A4: CIA and the linear causal regression
+    \item A5: Omitted variables bias
+    \item A6: Bad control decomposition
+    \item A7: Matching formulas for \(\TOT\) and \(\ATE\)
+    \item A8: Regression as variance-weighted matching
+    \item A9: Propensity-score theorem
+    \item A10: Inverse-probability weighting identities
+    \item A11: Grouped-data weighting
+    \item A12: Conditional-on-positive decomposition
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Appendix A1: LIE and CEF Decomposition}
+  \hypertarget{app:cef-foundations}{}
+  Start from the law of iterated expectations:
+  \[
+    \E[Y_i]=\E\{\E[Y_i \mid X_i]\}.
+  \]
+  Define
+  \[
+    \varepsilon_i \equiv Y_i-\E[Y_i \mid X_i].
+  \]
+  Then
+  \[
+    \E[\varepsilon_i \mid X_i]
+    =
+    \E[Y_i \mid X_i]-\E[Y_i \mid X_i]
+    =
+    0.
+  \]
+  Therefore
+  \[
+    Y_i=\E[Y_i \mid X_i]+\varepsilon_i
+    \quad \text{with} \quad
+    \E[\varepsilon_i \mid X_i]=0.
+  \]
+  Any function \(h(X_i)\) is also uncorrelated with \(\varepsilon_i\) because
+  \[
+    \E[h(X_i)\varepsilon_i]
+    =
+    \E\{h(X_i)\E[\varepsilon_i \mid X_i]\}
+    =
+    0.
+  \]
+  \backbutton{lie}
+\end{frame}
+
+\begin{frame}{Appendix A2: Why Regression Approximates the CEF}
+  \hypertarget{app:reg-justification}{}
+  Write
+  \[
+    \left(Y_i-X_i'b\right)^2
+    =
+    \left(Y_i-\E[Y_i \mid X_i]\right)^2
+    +
+    \left(\E[Y_i \mid X_i]-X_i'b\right)^2
+    +
+    2\left(Y_i-\E[Y_i \mid X_i]\right)\left(\E[Y_i \mid X_i]-X_i'b\right).
+  \]
+  Take expectations.
+  \begin{itemize}
+    \item The first term does not depend on \(b\).
+    \item The cross term has expectation zero because \(Y_i-\E[Y_i \mid X_i]\) is orthogonal to any function of \(X_i\).
+  \end{itemize}
+  So minimizing \(\E[(Y_i-X_i'b)^2]\) is equivalent to minimizing
+  \[
+    \E\left[\left(\E[Y_i \mid X_i]-X_i'b\right)^2\right].
+  \]
+  Hence regression is the best linear approximation to the CEF.
+  \backbutton{reg-just}
+\end{frame}
+
+\begin{frame}{Appendix A3: Regression Anatomy}
+  \hypertarget{app:anatomy-proof}{}
+  Let \(\tilde{x}_{ki}\) be the residual from regressing \(x_{ki}\) on all other covariates.
+  Start from
+  \[
+    Y_i=\beta_0+\beta_k x_{ki}+\text{other terms}+e_i.
+  \]
+  Take covariance with \(\tilde{x}_{ki}\):
+  \[
+    \Cov(Y_i,\tilde{x}_{ki})
+    =
+    \beta_k \Cov(x_{ki},\tilde{x}_{ki}),
+  \]
+  because
+  \begin{itemize}
+    \item \(\tilde{x}_{ki}\) is uncorrelated with all other regressors by construction,
+    \item \(\tilde{x}_{ki}\) is uncorrelated with the regression residual.
+  \end{itemize}
+  Since \(\Cov(x_{ki},\tilde{x}_{ki})=\Var(\tilde{x}_{ki})\),
+  \[
+    \beta_k=\frac{\Cov(Y_i,\tilde{x}_{ki})}{\Var(\tilde{x}_{ki})}.
+  \]
+  \backbutton{anatomy}
+\end{frame}
+
+\begin{frame}{Appendix A4: CIA and the Linear Causal Regression}
+  \hypertarget{app:cia-proof}{}
+  With binary treatment, CIA says
+  \[
+    \{Y_{0i},Y_{1i}\}\indep C_i \mid X_i.
+  \]
+  Therefore
+  \[
+    \E[Y_{0i} \mid X_i,C_i=1]=\E[Y_{0i} \mid X_i,C_i=0]
+  \]
+  and similarly for \(Y_{1i}\). Hence
+  \[
+    \E[Y_i \mid X_i,C_i=1]-\E[Y_i \mid X_i,C_i=0]
+    =
+    \E[Y_{1i}-Y_{0i} \mid X_i].
+  \]
+  For the linear causal model
+  \[
+    f_i(s)=\alpha+\rho s+\eta_i,
+    \qquad
+    \eta_i=X_i'\gamma+v_i,
+  \]
+  CIA implies
+  \[
+    \E[f_i(s)\mid X_i,S_i]=\E[f_i(s)\mid X_i]=\alpha+\rho s+X_i'\gamma,
+  \]
+  so the observed-outcome equation
+  \[
+    Y_i=\alpha+\rho S_i+X_i'\gamma+v_i
+  \]
+  has a residual orthogonal to \(S_i\) and \(X_i\), and \(\rho\) is causal.
+  \backbutton{cia}
+\end{frame}
+
+\begin{frame}{Appendix A5: Omitted Variables Bias}
+  \hypertarget{app:ovb-proof}{}
+  Long regression:
+  \[
+    Y_i=\alpha+\rho S_i+A_i'\gamma+\varepsilon_i.
+  \]
+  The short-regression slope on \(S_i\) is
+  \[
+    \frac{\Cov(Y_i,S_i)}{\Var(S_i)}.
+  \]
+  Substitute the long regression into the covariance:
+  \[
+    \Cov(Y_i,S_i)
+    =
+    \rho \Var(S_i)+\Cov(A_i'\gamma,S_i)+\Cov(\varepsilon_i,S_i).
+  \]
+  The last term is zero in the long regression, so
+  \[
+    \frac{\Cov(Y_i,S_i)}{\Var(S_i)}
+    =
+    \rho+\frac{\Cov(A_i'\gamma,S_i)}{\Var(S_i)}.
+  \]
+  Writing \(\delta_{AS}\) for the coefficients from regressions of \(A_i\) on \(S_i\),
+  \[
+    \frac{\Cov(Y_i,S_i)}{\Var(S_i)}
+    =
+    \rho+\gamma'\delta_{AS}.
+  \]
+  \backbutton{ovb}
+\end{frame}
+
+\begin{frame}{Appendix A6: Why Bad Controls Generate Selection Bias}
+  \hypertarget{app:bad-control-proof}{}
+  Let \(C_i\) be college and \(W_i\) be white-collar status, with potential outcomes
+  \[
+    Y_i=C_iY_{1i}+(1-C_i)Y_{0i},
+    \qquad
+    W_i=C_iW_{1i}+(1-C_i)W_{0i}.
+  \]
+  Even if \(C_i\) is randomly assigned,
+  \[
+    \E[Y_i \mid W_i=1,C_i=1]-\E[Y_i \mid W_i=1,C_i=0]
+  \]
+  becomes
+  \[
+    \E[Y_{1i} \mid W_{1i}=1]-\E[Y_{0i} \mid W_{0i}=1].
+  \]
+  Add and subtract \(\E[Y_{0i} \mid W_{1i}=1]\):
+  \[
+    \E[Y_{1i}-Y_{0i} \mid W_{1i}=1]
+    +
+    \left\{
+      \E[Y_{0i} \mid W_{1i}=1]-\E[Y_{0i} \mid W_{0i}=1]
+    \right\}.
+  \]
+  The second term is selection bias caused by conditioning on a post-treatment variable.
+  \backbutton{bad-control}
+\end{frame}
+
+\begin{frame}{Appendix A7: Matching Formulas}
+  \hypertarget{app:matching-proof}{}
+  Define
+  \[
+    \delta_X\equiv \E[Y_i \mid X_i,D_i=1]-\E[Y_i \mid X_i,D_i=0].
+  \]
+  Under CIA,
+  \[
+    \E[Y_{0i}\mid X_i,D_i=1]=\E[Y_{0i}\mid X_i,D_i=0],
+  \]
+  so
+  \[
+    \TOT
+    =
+    \E[Y_{1i}-Y_{0i}\mid D_i=1]
+    =
+    \E[\delta_X \mid D_i=1].
+  \]
+  If \(X_i\) is discrete,
+  \[
+    \TOT=\sum_x \delta_x \Prob(X_i=x \mid D_i=1).
+  \]
+  Similarly,
+  \[
+    \ATE=\E[\delta_X]=\sum_x \delta_x \Prob(X_i=x).
+  \]
+  \backbutton{matching}
+\end{frame}
+
+\begin{frame}{Appendix A8: Regression as Variance-Weighted Matching}
+  \hypertarget{app:reg-matching-proof}{}
+  With saturated controls in \(X_i\), the regression coefficient on \(D_i\) satisfies
+  \[
+    \delta_R
+    =
+    \frac{\Cov(Y_i,\tilde{D}_i)}{\Var(\tilde{D}_i)}
+    =
+    \frac{\E[(D_i-\E[D_i \mid X_i])Y_i]}{\E[(D_i-\E[D_i \mid X_i])^2]}.
+  \]
+  Replace \(Y_i\) by \(\E[Y_i \mid D_i,X_i]\) and expand the CEF:
+  \[
+    \E[Y_i \mid D_i,X_i]
+    =
+    \E[Y_i \mid D_i=0,X_i]+\delta_X D_i.
+  \]
+  The baseline term drops out because it is a function of \(X_i\). What remains is
+  \[
+    \delta_R
+    =
+    \frac{\E[(D_i-\E[D_i \mid X_i])^2\delta_X]}{\E[(D_i-\E[D_i \mid X_i])^2]}
+    =
+    \frac{\E[\sigma_D^2(X_i)\delta_X]}{\E[\sigma_D^2(X_i)]}.
+  \]
+  For binary treatment, \(\sigma_D^2(X_i)=p(X_i)(1-p(X_i))\).
+  \backbutton{reg-weight}
+\end{frame}
+
+\begin{frame}{Appendix A9: Proof of the Propensity-Score Theorem}
+  \hypertarget{app:pscore-proof}{}
+  We want to show that \(Y_{ji}\indep D_i \mid p(X_i)\), where \(j\in\{0,1\}\).
+  It is enough to prove that
+  \[
+    \Prob(D_i=1 \mid Y_{ji},p(X_i))
+  \]
+  does not depend on \(Y_{ji}\).
+  Using iterated expectations,
+  \[
+  \begin{aligned}
+    \Prob(D_i=1 \mid Y_{ji},p(X_i))
+    &= \E[D_i \mid Y_{ji},p(X_i)] \\
+    &= \E\{\E[D_i \mid Y_{ji},p(X_i),X_i] \mid Y_{ji},p(X_i)\} \\
+    &= \E\{\E[D_i \mid Y_{ji},X_i] \mid Y_{ji},p(X_i)\} \\
+    &= \E\{\E[D_i \mid X_i] \mid Y_{ji},p(X_i)\},
+  \end{aligned}
+  \]
+  where the last step uses CIA given \(X_i\).
+  But \(\E[D_i \mid X_i]=p(X_i)\), so the final expression is simply \(p(X_i)\), which does not depend on \(Y_{ji}\).
+  \backbutton{pscore}
+\end{frame}
+
+\begin{frame}{Appendix A10: Inverse-Probability Weighting Identities}
+  \hypertarget{app:ipw-proof}{}
+  Under CIA,
+  \[
+    \E\left[\frac{Y_iD_i}{p(X_i)}\right]
+    =
+    \E\left\{
+      \E\left[\frac{Y_iD_i}{p(X_i)} \middle| X_i \right]
+    \right\}
+    =
+    \E[Y_{1i}].
+  \]
+  Similarly,
+  \[
+    \E\left[\frac{Y_i(1-D_i)}{1-p(X_i)}\right]
+    =
+    \E[Y_{0i}].
+  \]
+  Subtract to obtain
+  \[
+    \ATE
+    =
+    \E\left[
+      \frac{Y_iD_i}{p(X_i)}-\frac{Y_i(1-D_i)}{1-p(X_i)}
+    \right].
+  \]
+  Rearranging terms yields
+  \[
+    \ATE
+    =
+    \E\left[
+      \frac{(D_i-p(X_i))Y_i}{p(X_i)(1-p(X_i))}
+    \right].
+  \]
+  \backbutton{ipw}
+\end{frame}
+
+\begin{frame}{Appendix A11: Why Group-Size Weighting Recovers the Microdata Regression}
+  \hypertarget{app:grouped-proof}{}
+  Suppose \(X_i\) takes discrete values \(x\), and for each cell you observe
+  \[
+    \bar{y}_x = \E[Y_i \mid X_i=x]
+    \qquad \text{and} \qquad
+    n_x.
+  \]
+  The population regression moment is
+  \[
+    \E[X_iY_i]
+    =
+    \sum_x x\,\E[Y_i \mid X_i=x]\Prob(X_i=x).
+  \]
+  In a sample, \(\Prob(X_i=x)\) is estimated by \(n_x/N\), so
+  \[
+    \widehat{\E[X_iY_i]}
+    =
+    \sum_x x\,\bar{y}_x \frac{n_x}{N}.
+  \]
+  This is exactly the cross-moment generated by a weighted regression of \(\bar{y}_x\) on \(x\) with weights \(n_x\).
+  Therefore weighting cell means by cell size reproduces the microdata regression target.
+  \backbutton{group-weight}
+\end{frame}
+
+\begin{frame}{Appendix A12: Conditional-on-Positive Decomposition}
+  \hypertarget{app:cop-proof}{}
+  Consider the conditional-on-positive comparison:
+  \[
+    \E[Y_i \mid Y_i>0,D_i=1]-\E[Y_i \mid Y_i>0,D_i=0].
+  \]
+  In a randomized experiment this equals
+  \[
+    \E[Y_{1i} \mid Y_{1i}>0]-\E[Y_{0i} \mid Y_{0i}>0].
+  \]
+  Add and subtract \(\E[Y_{0i} \mid Y_{1i}>0]\):
+  \[
+  \begin{aligned}
+    &\E[Y_{1i}-Y_{0i} \mid Y_{1i}>0] \\
+    &\quad + \left\{
+      \E[Y_{0i} \mid Y_{1i}>0]-\E[Y_{0i} \mid Y_{0i}>0]
+    \right\}.
+  \end{aligned}
+  \]
+  The second term is selection bias:
+  treatment changes who ends up in the positive-outcome group, so the two groups being compared are not the same population.
+  \backbutton{cop}
+\end{frame}
+
+\end{document}

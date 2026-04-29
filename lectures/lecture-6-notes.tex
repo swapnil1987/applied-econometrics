@@ -1,0 +1,767 @@
+\input{tufte-style.tex}
+
+\title{Applied Econometrics: Session 6\\Matching and Propensity Scores}
+\author{Swapnil Singh}
+\date{}
+
+\hypersetup{
+  pdftitle={Applied Econometrics: Session 6 - Matching and Propensity Scores},
+  pdfauthor={Swapnil Singh},
+  pdfkeywords={matching, propensity score, conditional independence, overlap, inverse probability weighting}
+}
+
+\setlength{\headheight}{26pt}
+
+\newcommand{\ATU}{\mathrm{ATU}}
+\newcommand{\ps}{e(X)}
+\newcommand{\ehat}{\widehat e(X)}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+This lecture studies matching and propensity-score methods for observational
+causal inference. The main question is simple: when treatment is not randomly
+assigned, can we construct a credible comparison group using observed
+pre-treatment covariates? We cover conditional independence, overlap, ATE and
+ATT, exact matching, nearest-neighbor matching, common support, the
+propensity-score theorem, propensity-score matching, inverse probability
+weighting, diagnostics, and reporting standards.
+\end{abstract}
+
+\begin{boxD}
+\textbf{Reading and objective.} Read Chapters 10 and 11 of Matheus Facure
+Alves, \emph{Causal Inference for the Brave and True}:
+\url{https://matheusfacure.github.io/python-causality-handbook/10-Matching.html}
+and
+\url{https://matheusfacure.github.io/python-causality-handbook/11-Propensity-Score.html}.
+The companion script is
+\texttt{lectures/code/lecture-6-matching-propensity.py}. The objective is to
+learn how to design, diagnose, estimate, and report a selection-on-observables
+study without pretending that software has solved the identification problem.
+\end{boxD}
+
+\section{The Observational Problem}
+
+We observe a sample
+\[
+    (Y_i,D_i,X_i),\qquad D_i\in\{0,1\},
+\]
+where \(Y_i\) is the observed outcome, \(D_i\) is the treatment indicator, and
+\(X_i\) is a vector of pre-treatment covariates. The potential outcomes are
+\(Y_{1i}\), the outcome unit \(i\) would have under treatment, and \(Y_{0i}\),
+the outcome unit \(i\) would have without treatment. The observed outcome is
+\[
+    Y_i = D_iY_{1i} + (1-D_i)Y_{0i}.
+\]
+For each unit we observe only one potential outcome. If \(D_i=1\), then
+\(Y_i=Y_{1i}\) and \(Y_{0i}\) is missing. If \(D_i=0\), then \(Y_i=Y_{0i}\) and
+\(Y_{1i}\) is missing. This is the fundamental missing-data problem of causal
+inference.
+
+In a randomized experiment, treated and untreated units are comparable in large
+samples because assignment is independent of potential outcomes. In an
+observational study, treatment is often chosen by people, firms, doctors,
+schools, or governments. Treated and untreated units can differ even before the
+treatment occurs. Those pre-treatment differences may also predict outcomes.
+Then the raw treated-control difference,
+\[
+    \E[Y_i\mid D_i=1]-\E[Y_i\mid D_i=0],
+\]
+mixes the causal effect with selection bias.
+
+\begin{defN}[Selection bias]
+Selection bias is the difference between the observed comparison group and the
+missing counterfactual group. For the treated population,
+\[
+\begin{aligned}
+    &\E[Y_i\mid D_i=1]-\E[Y_i\mid D_i=0] \\
+    &\quad =
+    \ATT
+    +
+    \{\E[Y_{0i}\mid D_i=1]
+    -\E[Y_{0i}\mid D_i=0]\}.
+\end{aligned}
+\]
+The second term is selection bias. It is zero in a randomized experiment, but
+not generally zero in observational data.
+\end{defN}
+
+\begin{exmp}[Training program]
+Suppose participants in a job-training program earn more after the program than
+non-participants. Is that the effect of training? Maybe. But participants may
+also be younger, more motivated, closer to employment offices, or more likely
+to have recent employment histories. If those characteristics would have raised
+earnings even without training, the naive gap overstates the effect. Matching
+asks whether we can compare trained and untrained people with similar
+pre-treatment characteristics.
+\end{exmp}
+
+\section{Identification Assumptions}
+
+\begin{assN}[Conditional independence]
+The conditional independence assumption, also called selection on observables or
+unconfoundedness, is
+\[
+    (Y_{1i},Y_{0i}) \independent D_i \mid X_i.
+\]
+After conditioning on \(X_i\), treatment assignment is as good as random.
+\end{assN}
+
+This assumption is not a mechanical assumption. It is a claim about the economic
+assignment process. If the treatment is a scholarship, \(X_i\) must contain the
+pre-treatment determinants of both scholarship receipt and later outcomes:
+prior grades, family background, school characteristics, location, and so on.
+If unobserved motivation affects both scholarship receipt and later income,
+conditioning on observed \(X_i\) will not remove that bias.
+
+\begin{boxF}
+\textbf{Important warning.} Matching and propensity scores do not fix selection
+on unobservables. They organize comparisons among units that look similar in
+observed variables. If the important difference is unobserved, these methods
+can still be badly biased.
+\end{boxF}
+
+\begin{assN}[Overlap]
+For the covariate values relevant to the target estimand,
+\[
+    0 < \Prob(D_i=1\mid X_i=x) < 1.
+\]
+There must be treated and untreated units with comparable \(X_i\).
+\end{assN}
+
+Overlap is the empirical content behind the phrase ``comparable group.'' If all
+high-income urban workers receive training and no high-income urban worker is
+untreated, the data contain no direct evidence about what those treated workers
+would have earned without training. An estimator can extrapolate, but that is
+modeling, not matching.
+
+\subsection{ATE, ATT, and ATU}
+
+Three estimands appear often:
+\[
+    \ATE = \E[Y_{1i}-Y_{0i}],
+\]
+\[
+    \ATT = \E[Y_{1i}-Y_{0i}\mid D_i=1],
+\]
+\[
+    \ATU = \E[Y_{1i}-Y_{0i}\mid D_i=0].
+\]
+The ATE averages over the whole population. The ATT averages over the treated
+population. The ATU averages over the untreated population. If treatment effects
+are heterogeneous, these are different objects.
+
+Many matching exercises naturally estimate the ATT because we start with each
+treated unit and search for untreated matches to impute its missing \(Y_0\).
+IPW can be written to target either the ATE or the ATT. Therefore the estimand
+must be chosen before estimation. Do not report ``the effect'' without saying
+whose effect.
+
+\section{Exact Matching}
+
+Exact matching is the cleanest version of the idea. Suppose \(X_i\) takes a
+small number of discrete values. For a covariate cell \(x\), define the within
+cell treatment-control difference
+\[
+    \delta(x)
+    =
+    \E[Y_i\mid D_i=1,X_i=x]
+    -
+    \E[Y_i\mid D_i=0,X_i=x].
+\]
+Under conditional independence and overlap,
+\[
+    \delta(x)
+    =
+    \E[Y_{1i}-Y_{0i}\mid X_i=x].
+\]
+For the ATT,
+\[
+    \ATT
+    =
+    \sum_x \delta(x)\Prob(X_i=x\mid D_i=1).
+\]
+The weights are the distribution of \(X_i\) among treated units, because the
+target population is the treated population.
+
+\begin{exmp}[A tiny exact-matching calculation]
+Suppose four covariate cells produce the following cell effects and treated
+shares.
+\[
+\begin{array}{lccc}
+\toprule
+\text{Cell} & \text{Cell effect} & \text{Treated share} & \text{Contribution}\\
+\midrule
+\text{Young, urban} & 2.5 & 0.40 & 1.00\\
+\text{Young, rural} & 2.0 & 0.20 & 0.40\\
+\text{Older, urban} & 1.5 & 0.25 & 0.375\\
+\text{Older, rural} & 1.0 & 0.15 & 0.150\\
+\bottomrule
+\end{array}
+\]
+The exact-matching ATT is
+\[
+    1.00+0.40+0.375+0.150=1.925.
+\]
+Notice that we do not compare all treated units with all controls. We compare
+within cells, then average using treated-population weights.
+\end{exmp}
+
+\subsection{Exact Matching as the G-Formula}
+
+Start from
+\[
+    \ATT = \E[Y_{1i}-Y_{0i}\mid D_i=1].
+\]
+Iterate over covariates:
+\[
+\begin{aligned}
+    \ATT
+    =
+    \sum_x
+    \left\{
+    \E[Y_{1i}\mid X_i=x,D_i=1]\right.\\
+    \left.
+    -
+    \E[Y_{0i}\mid X_i=x,D_i=1]
+    \right\}
+    \Prob(X_i=x\mid D_i=1).
+\end{aligned}
+\]
+The first conditional mean is observed:
+\[
+    \E[Y_{1i}\mid X_i=x,D_i=1]=\E[Y_i\mid X_i=x,D_i=1].
+\]
+For the missing mean, conditional independence gives
+\[
+\begin{aligned}
+    \E[Y_{0i}\mid X_i=x,D_i=1]
+    &=
+    \E[Y_{0i}\mid X_i=x,D_i=0]\\
+    &=
+    \E[Y_i\mid X_i=x,D_i=0].
+\end{aligned}
+\]
+Substituting yields the exact-matching formula above. This derivation is useful
+because it shows precisely where the identifying assumption enters.
+
+\section{Matching as Imputation}
+
+Exact matching becomes difficult when \(X_i\) is continuous or high
+dimensional. Nearest-neighbor matching replaces exact equality with closeness.
+For a treated unit \(i\), let \(\mathcal{N}_K(i;D=0)\) be the set of its
+\(K\) nearest untreated neighbors. Then
+\[
+    \widehat Y_{0i}
+    =
+    \frac{1}{K}\sum_{\ell\in\mathcal{N}_K(i;D=0)}Y_\ell,
+\]
+and the matching estimator for the ATT is
+\[
+    \widehat{\ATT}_M
+    =
+    \frac{1}{N_1}\sum_{i:D_i=1}(Y_i-\widehat Y_{0i}).
+\]
+This is imputation. We fill in the missing untreated potential outcome for each
+treated unit using observed untreated outcomes from similar units.
+
+\begin{defN}[Distance metric]
+A common distance between treated unit \(i\) and control unit \(\ell\) is
+\[
+    d(i,\ell)
+    =
+    \left[(X_i-X_\ell)'W(X_i-X_\ell)\right]^{1/2}.
+\]
+If \(W=I\), this is Euclidean distance after scaling. If
+\(W=\widehat\Sigma_X^{-1}\), this is Mahalanobis distance.
+\end{defN}
+
+Scaling is not optional. If one variable is income in euros and another is age
+in years, raw Euclidean distance will usually be dominated by income. Standard
+practice is to standardize continuous covariates before distance matching.
+
+\subsection{Replacement, Calipers, and Neighbors}
+
+Matching with replacement allows the same control unit to be used many times.
+This often improves match quality because each treated unit can use the closest
+available control. The cost is that the estimator may depend heavily on a small
+number of controls.
+
+Matching without replacement uses each control at most once. This can increase
+the number of distinct controls, but later treated units may receive poor
+matches because the best controls have already been used.
+
+A caliper imposes a maximum acceptable distance:
+\[
+    d(i,\ell) \leq c.
+\]
+Calipers prevent visibly bad matches. The cost is that some treated units are
+dropped, so the estimand may become the ATT for the matched treated population,
+not the ATT for all treated units.
+
+\begin{boxD}
+\textbf{Bias-variance tradeoff.} One close neighbor is local and often has low
+bias, but it is noisy. Many neighbors reduce variance but can introduce bias by
+including less comparable controls. Strict calipers improve credibility of
+matches but may change the target population.
+\end{boxD}
+
+\subsection{Bias from Imperfect Matches}
+
+Let
+\[
+    m_0(x)=\E[Y_{0i}\mid X_i=x].
+\]
+Suppose treated unit \(i\) is matched to control \(m(i)\). Conditional on their
+covariates, the expected imputation error is approximately
+\[
+    \E[Y_{0,m(i)}-Y_{0i}\mid X_i,X_{m(i)}]
+    =
+    m_0(X_{m(i)})-m_0(X_i).
+\]
+If \(m_0(\cdot)\) is smooth, a first-order Taylor approximation gives
+\[
+    m_0(X_{m(i)})-m_0(X_i)
+    \approx
+    \nabla m_0(X_i)'(X_{m(i)}-X_i).
+\]
+The bias is small when matched covariates are close or when the untreated
+outcome surface is flat. It is large when the match is far away in a direction
+that strongly predicts untreated outcomes.
+
+\subsection{Curse of Dimensionality}
+
+Suppose each covariate is split into five bins. With \(p\) covariates there are
+\[
+    5^p
+\]
+cells. With \(p=2\), there are 25 cells. With \(p=5\), there are 3,125 cells.
+With \(p=10\), there are 9,765,625 cells. Most cells will be empty in ordinary
+datasets. Even nearest-neighbor matching suffers: in high dimensions, the
+nearest neighbor may still be far away.
+
+This is why matching is attractive as an idea but difficult as a mechanical
+solution. Adding covariates can reduce omitted confounding, but it also makes
+good matches harder to find. The answer is not to throw in every available
+variable blindly. The answer is to choose pre-treatment confounders using
+economic reasoning, then diagnose whether the data contain credible matches.
+
+\section{Common Support and Design Diagnostics}
+
+Common support is not a decoration added after estimation. It is part of the
+research design. Ask:
+\begin{itemize}
+    \item Do treated units have nearby controls?
+    \item Do controls have nearby treated units if the target is the ATE?
+    \item How many observations are dropped by calipers or trimming?
+    \item Are results driven by a small set of heavily reused controls?
+    \item Are covariates balanced after matching?
+\end{itemize}
+
+A matched sample can have fewer observations than the original sample. This is
+not automatically a problem. A smaller credible comparison is often better than
+a larger incredible comparison. But the population must be described honestly.
+If the method drops older high-income treated units because no controls are
+similar, the estimate is not the ATT for all treated units.
+
+\section{Propensity Scores}
+
+\begin{defN}[Propensity score]
+The propensity score is the conditional probability of treatment:
+\[
+    e(X_i)=\Prob(D_i=1\mid X_i).
+\]
+\end{defN}
+
+Propensity scores compress the treatment-selection information in \(X_i\) into
+a scalar. Units with the same propensity score have the same predicted
+probability of treatment, even if their covariate profiles are not identical.
+This can make matching, stratification, trimming, and weighting more feasible.
+
+\begin{thmN}[Propensity-score theorem]
+If
+\[
+    (Y_{1i},Y_{0i})\independent D_i\mid X_i,
+\]
+then
+\[
+    (Y_{1i},Y_{0i})\independent D_i\mid e(X_i),
+\]
+provided overlap holds. The propensity score is a balancing score.
+\end{thmN}
+
+\subsection{Balancing Intuition}
+
+The key balancing statement is
+\[
+    D_i \independent X_i \mid e(X_i).
+\]
+Within a narrow propensity-score stratum, treated and untreated units should
+have similar distributions of the covariates used to estimate the score. This
+does not mean each treated unit has a perfect twin. It means the distribution of
+covariates should be balanced between treatment groups within score strata or
+after weighting.
+
+\begin{proof}[Why the score balances covariates]
+Let \(e(X)=\Prob(D=1\mid X)\). For any value \(p\) in the support of \(e(X)\),
+\[
+    \Prob(D=1\mid X=x,e(X)=p)=\Prob(D=1\mid X=x)=e(x)=p.
+\]
+Therefore, within the set of units with \(e(X)=p\), the probability of
+treatment does not depend on the remaining details of \(X\). This is the sense
+in which the score balances covariates.
+\end{proof}
+
+\begin{proof}[Why conditioning on the score identifies effects]
+If conditional independence holds given \(X\), then for \(d\in\{0,1\}\),
+\[
+    \E[Y_d\mid D=1,e(X)]
+    =
+    \E\{\E[Y_d\mid D=1,X]\mid D=1,e(X)\}.
+\]
+By conditional independence,
+\[
+    \E[Y_d\mid D=1,X]=\E[Y_d\mid X].
+\]
+By the balancing property, the distribution of \(X\) conditional on
+\(D=1,e(X)\) equals the distribution conditional on \(D=0,e(X)\). Therefore
+\[
+    \E[Y_d\mid D=1,e(X)] = \E[Y_d\mid D=0,e(X)].
+\]
+Thus treated and untreated units with the same propensity score can be compared
+under the same selection-on-observables assumption.
+\end{proof}
+
+\begin{boxF}
+\textbf{Beginner trap.} A propensity-score model is not judged mainly by its
+classification accuracy or AUC. A model that predicts treatment almost
+perfectly may create terrible overlap. The goal is balance and common support,
+not a beautiful treatment-choice regression table.
+\end{boxF}
+
+\section{Estimating Propensity Scores}
+
+In practice \(e(X_i)\) is unknown, so we estimate it:
+\[
+    \widehat e(X_i)=\widehat{\Prob}(D_i=1\mid X_i).
+\]
+A common starting point is logistic regression,
+\[
+    \log\left(\frac{e(X_i)}{1-e(X_i)}\right)=X_i'\gamma.
+\]
+Researchers may also use probit, series terms, interactions, random forests, or
+gradient boosting. More flexible models can help balance, but they can also
+overfit. In applied work, the score model should be treated as a design model:
+its job is to make treated and untreated units comparable on pre-treatment
+covariates.
+
+\begin{boxD}
+\textbf{Covariate choice.} Include pre-treatment variables that predict both
+treatment and potential outcomes. Do not include variables caused by treatment.
+Be careful with pure instruments: variables that strongly predict treatment but
+not outcomes can worsen overlap and inflate weights.
+\end{boxD}
+
+\subsection{Diagnostics After Estimating the Score}
+
+After estimating \(\widehat e(X)\), inspect:
+\begin{itemize}
+    \item histograms or density plots of scores by treatment status;
+    \item minimum, median, and maximum score in each group;
+    \item the fraction of observations near 0 or 1;
+    \item standardized mean differences before and after adjustment;
+    \item maximum weights and effective sample size;
+    \item which units are dropped by common-support restrictions.
+\end{itemize}
+
+For a covariate \(X_j\), the standardized mean difference is
+\[
+    \mathrm{SMD}_j
+    =
+    \frac{\bar X_{j,1}-\bar X_{j,0}}{s_j},
+\]
+where \(s_j\) is a pooled or full-sample standard deviation. Weighted versions
+replace the group means by weighted means. Values close to zero indicate better
+balance. The threshold 0.10 is often used as a rule of thumb, but it is not a
+law of nature.
+
+\section{Trimming and Propensity-Score Matching}
+
+Trimming removes observations with weak overlap:
+\[
+    a \leq \widehat e(X_i) \leq b.
+\]
+Common choices include fixed cutoffs such as \(0.05\leq \widehat e(X_i)\leq
+0.95\), or the empirical common support. Define
+\[
+    \ell
+    =
+    \max\{\min_{D_i=1}\widehat e(X_i),\min_{D_i=0}\widehat e(X_i)\},
+    \qquad
+    u
+    =
+    \min\{\max_{D_i=1}\widehat e(X_i),\max_{D_i=0}\widehat e(X_i)\}.
+\]
+Then keep observations satisfying
+\[
+    \ell \leq \widehat e(X_i)\leq u.
+\]
+Trimming is not a harmless numerical step. It changes the estimand to the
+population that remains after trimming.
+
+Propensity-score matching uses the scalar distance
+\[
+    d(i,\ell)=|\widehat e(X_i)-\widehat e(X_\ell)|.
+\]
+The advantage is simplicity. The danger is that two units with the same score
+can have different covariate profiles. Therefore balance must be checked on the
+original covariates, not only on the score.
+
+\section{Inverse Probability Weighting}
+
+Inverse probability weighting reweights observations by how rare their
+treatment status is for their covariates. For the ATE, the population moments
+are identified by
+\[
+    \E[Y_1] = \E\left[\frac{D_iY_i}{e(X_i)}\right],
+    \qquad
+    \E[Y_0] = \E\left[\frac{(1-D_i)Y_i}{1-e(X_i)}\right].
+\]
+Therefore
+\[
+    \ATE
+    =
+    \E\left[\frac{D_iY_i}{e(X_i)}
+    -
+    \frac{(1-D_i)Y_i}{1-e(X_i)}\right].
+\]
+
+\begin{proof}[IPW identity for \(Y_1\)]
+Using iterated expectations,
+\[
+    \E\left[\frac{D_iY_i}{e(X_i)}\right]
+    =
+    \E\left[\E\left(\frac{D_iY_{1i}}{e(X_i)}\mid X_i\right)\right].
+\]
+Under conditional independence,
+\[
+    \E[D_iY_{1i}\mid X_i]
+    =
+    \E[D_i\mid X_i]\E[Y_{1i}\mid X_i]
+    =
+    e(X_i)\E[Y_{1i}\mid X_i].
+\]
+Thus
+\[
+    \E\left[\frac{D_iY_i}{e(X_i)}\right]
+    =
+    \E[\E(Y_{1i}\mid X_i)]
+    =
+    \E[Y_{1i}].
+\]
+The proof for \(Y_0\) is analogous.
+\end{proof}
+
+A normalized, Hajek-style ATE estimator is
+\[
+    \widehat{\ATE}_{IPW}
+    =
+    \frac{\sum_i D_iY_i/\widehat e(X_i)}
+         {\sum_i D_i/\widehat e(X_i)}
+    -
+    \frac{\sum_i (1-D_i)Y_i/[1-\widehat e(X_i)]}
+         {\sum_i (1-D_i)/[1-\widehat e(X_i)]}.
+\]
+The treated group is weighted to represent everyone. The untreated group is
+also weighted to represent everyone. The difference estimates the ATE under
+conditional independence and overlap.
+
+\subsection{IPW for the ATT}
+
+For the ATT, treated units already represent the treated population. Controls
+must be reweighted to look like treated units:
+\[
+    w_i^{ATT}
+    =
+    \begin{cases}
+      1, & D_i=1,\\
+      \dfrac{e(X_i)}{1-e(X_i)}, & D_i=0.
+    \end{cases}
+\]
+A normalized ATT estimator is
+\[
+    \widehat{\ATT}_{IPW}
+    =
+    \frac{\sum_i D_iY_i}{\sum_iD_i}
+    -
+    \frac{\sum_i (1-D_i)w_i^{ATT}Y_i}
+         {\sum_i(1-D_i)w_i^{ATT}}.
+\]
+Controls with high treatment probability receive larger weight because they
+look like the treated population.
+
+\subsection{Weight Diagnostics}
+
+Extreme propensity scores create extreme weights. For the ATE, a treated unit
+with \(\widehat e(X_i)\) close to zero receives weight \(1/\widehat e(X_i)\).
+A control unit with \(\widehat e(X_i)\) close to one receives weight
+\(1/[1-\widehat e(X_i)]\). A few observations can dominate the estimate.
+
+Report at least the maximum weight, selected percentiles, and effective sample
+size:
+\[
+    ESS = \frac{(\sum_i w_i)^2}{\sum_i w_i^2}.
+\]
+If 2,000 observations have an effective sample size of 60 after weighting, the
+design is fragile even if the regression output prints a small standard error.
+
+\section{The Companion Python Example}
+
+The script \texttt{lectures/code/lecture-6-matching-propensity.py} simulates an
+observational study with selection on observables. Treatment is more likely for
+some observed covariate profiles, treatment effects are heterogeneous, and the
+true ATE and ATT are known because the data are simulated.
+
+Students should run
+\[
+    \texttt{python lectures/code/lecture-6-matching-propensity.py}
+\]
+and compare:
+\begin{itemize}
+    \item the naive treated-control gap;
+    \item regression-adjusted OLS;
+    \item one-nearest-neighbor matching for the ATT;
+    \item propensity-score IPW for the ATE;
+    \item propensity-score weights for the ATT;
+    \item trimmed IPW estimates.
+\end{itemize}
+The useful lesson is not that one estimator always wins. The useful lesson is
+that the same data can produce different estimates because methods target
+different populations and rely on different design choices.
+
+\section{Common Mistakes}
+
+\begin{boxF}
+\textbf{Mistakes to avoid.}
+\begin{itemize}
+    \item Matching on post-treatment variables.
+    \item Reporting a propensity-score regression table instead of balance.
+    \item Estimating an ATE when there is overlap only for the treated
+    population.
+    \item Keeping extreme weights because the preferred estimate depends on
+    them.
+    \item Checking balance only on the propensity score and not on covariates.
+    \item Forgetting that trimming, calipers, and dropped observations change
+    the target population.
+    \item Calling matching causal without defending conditional independence.
+\end{itemize}
+\end{boxF}
+
+\section{Reporting a Matching or Propensity-Score Study}
+
+A credible report should state:
+\begin{enumerate}
+    \item the causal estimand: ATE, ATT, ATU, or an overlap-population effect;
+    \item the identifying assumption and why it is plausible in the setting;
+    \item the list of covariates and why they are pre-treatment confounders;
+    \item the matching method or propensity-score model;
+    \item overlap diagnostics;
+    \item balance before and after adjustment;
+    \item number of observations dropped, matched, or reused;
+    \item weight diagnostics if weighting is used;
+    \item standard errors and how they account for the full procedure;
+    \item sensitivity of results to calipers, trimming, covariates, and target
+    estimand.
+\end{enumerate}
+
+The reader's main question is: after this design step, would I believe treated
+and comparison units are exchangeable with respect to potential outcomes?
+
+\section{Worked Problems}
+
+\begin{exmp}[Exact matching ATT]
+There are two cells. In cell A, treated mean outcome is 12 and control mean
+outcome is 9. In cell B, treated mean outcome is 20 and control mean outcome is
+18. Among treated units, 70 percent are in cell A and 30 percent are in cell B.
+The ATT is
+\[
+    (12-9)\times 0.70 + (20-18)\times 0.30
+    =
+    2.1+0.6=2.7.
+\]
+The raw treated-control gap would generally be different because it also uses
+the untreated distribution across cells.
+\end{exmp}
+
+\begin{exmp}[ATT weights]
+Suppose a control unit has \(\widehat e(X)=0.80\). Its ATT control weight is
+\[
+    \frac{0.80}{1-0.80}=4.
+\]
+This control receives high weight because its covariates make it look like a
+unit that was likely to be treated. If another control has
+\(\widehat e(X)=0.20\), its ATT weight is \(0.20/0.80=0.25\). It contributes
+less to the treated counterfactual.
+\end{exmp}
+
+\begin{exmp}[Effective sample size]
+Consider weights \(w=(1,1,1,10)\). The nominal sample size is 4, but
+\[
+    ESS=\frac{(1+1+1+10)^2}{1^2+1^2+1^2+10^2}
+    =
+    \frac{169}{103}
+    \approx 1.64.
+\]
+The weighted estimate is effectively using far less information than the raw
+sample size suggests.
+\end{exmp}
+
+\section{Checklist for Students}
+
+\begin{enumerate}
+    \item Write the potential-outcomes estimand before choosing a method.
+    \item State whether the target is ATE, ATT, ATU, or a trimmed/overlap
+    population.
+    \item Use only pre-treatment covariates for the design.
+    \item Defend conditional independence using the institutional setting.
+    \item Check overlap before trusting estimates.
+    \item For matching, report the distance metric, replacement rule, number of
+    neighbors, caliper, and dropped units.
+    \item For propensity scores, report balance and overlap, not only the score
+    model.
+    \item For IPW, report weight percentiles, maximum weights, and effective
+    sample size.
+    \item Check standardized mean differences before and after adjustment.
+    \item Explain how trimming or matching changes the population being studied.
+\end{enumerate}
+
+\section{Practice Questions}
+
+\begin{enumerate}
+    \item In your own words, explain why the raw treated-control difference can
+    be biased in an observational study.
+    \item Derive the exact-matching formula for the ATT using iterated
+    expectations and conditional independence.
+    \item Give an example of a post-treatment variable and explain why matching
+    on it can be harmful.
+    \item Why does exact matching become infeasible when many covariates are
+    continuous?
+    \item In nearest-neighbor matching, what is the tradeoff between one
+    neighbor and many neighbors?
+    \item What does overlap mean for the ATT? What does it mean for the ATE?
+    \item State the propensity-score theorem and explain why it is useful.
+    \item Why is high treatment-prediction accuracy not the main goal of a
+    propensity-score model?
+    \item Derive the IPW identity
+    \(\E[D_iY_i/e(X_i)]=\E[Y_{1i}]\).
+    \item A control unit has \(\widehat e(X)=0.90\). What is its ATE control
+    weight? What is its ATT control weight? What does this imply about
+    overlap?
+    \item Run the companion Python script. Which estimator targets the ATT?
+    Which targets the ATE? How do trimming and weights change the interpretation?
+    \item Suppose a paper reports propensity-score matching but no balance table.
+    What should you ask the author to provide?
+\end{enumerate}
+
+\end{document}

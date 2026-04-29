@@ -1,0 +1,472 @@
+\documentclass[11pt,aspectratio=169]{beamer}
+\usetheme{SimplePlus}
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath,amssymb,mathtools}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{appendixnumberbeamer}
+\usepackage{hyperref}
+
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\Var}{\mathrm{Var}}
+\newcommand{\Cov}{\mathrm{Cov}}
+\newcommand{\indep}{\perp\!\!\!\perp}
+\newcommand{\derivbutton}[1]{\vspace{0.4em}\hfill\hyperlink{app:#1}{\beamerbutton{Appendix details}}}
+\newcommand{\backbutton}[1]{\vspace{0.4em}\hfill\hyperlink{main:#1}{\beamerbutton{Back to main slide}}}
+
+\title{Applied Econometrics: Session 1}
+\subtitle{Foundations of Causal Inference}
+\author{PhD Intensive Course}
+\institute{Lecture 1}
+\date{\today}
+
+\begin{document}
+
+\begin{frame}
+  \titlepage
+\end{frame}
+
+\begin{frame}{How These Slides Are Structured}
+  \begin{itemize}
+    \item This deck follows the lecture sequence: "Questions about Questions" and "The Experimental Ideal".
+    \item Every core idea appears in three layers: question, intuition, and formula.
+    \item The target is self-study: students should be able to revise directly from these slides.
+    \item Detailed algebra is in appendix with back-and-forth buttons.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Roadmap for Today}
+  \tableofcontents
+\end{frame}
+
+\section{Questions About Questions}
+
+\begin{frame}{Why Start with Questions, Not Methods?}
+  \begin{itemize}
+    \item Good econometrics cannot rescue a weak research question.
+    \item A coherent research agenda is the first identification device.
+    \item Experimental way of thinking before choosing estimators.
+  \end{itemize}
+  \begin{block}{Core message}
+    First define the causal question and ideal experiment; only then choose empirical strategy.
+  \end{block}
+\end{frame}
+
+\begin{frame}{The Four Research FAQs}
+  \begin{enumerate}
+    \item What is the causal relationship of interest?
+    \item What is the ideal experiment that answers it?
+    \item What is the identification strategy in available data?
+    \item What is the mode of statistical inference?
+  \end{enumerate}
+  \vspace{0.3em}
+  \textbf{These are sequential, not optional.}
+\end{frame}
+
+\begin{frame}{FAQ 1: What Is the Causal Relationship?}
+  Example: effect of schooling on wages.
+  \begin{itemize}
+    \item Descriptive statement: high-school and college graduates earn differently.
+    \item Causal statement: what would happen to the same person's wage if schooling changed?
+    \item Policy relevance: tuition subsidies, compulsory schooling laws, financial aid.
+  \end{itemize}
+  \begin{block}{Practical rule}
+    If the question has no counterfactual interpretation, causal methods are not yet the right tool.
+  \end{block}
+\end{frame}
+
+\begin{frame}{FAQ 2: What Is the Ideal Experiment?}
+  \begin{itemize}
+    \item Imagine an RCT with no budget and no practical constraints.
+    \item This clarifies what must vary and what must stay fixed.
+    \item Even hypothetical experiments improve question quality.
+  \end{itemize}
+  \textbf{Example:}
+  \begin{itemize}
+    \item To estimate schooling returns, ideal design randomly changes years of schooling.
+    \item Real world cannot do this perfectly, but the thought experiment defines the target.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{FAQ 2 Extension: FUQ (Fundamentally Unidentified Questions)}
+  \hypertarget{main:fuq}{}
+  Some questions cannot be answered by any feasible experiment.
+  \vspace{0.3em}
+  \textbf{Example:}
+  effect of school starting age on first-grade scores.
+  \begin{itemize}
+    \item Older starters are older at testing (maturation effect).
+    \item If you compare at same age, they have different time in school.
+    \item Age and schooling exposure are mechanically linked in child samples.
+  \end{itemize}
+  \begin{block}{Lesson}
+    Sometimes data cannot identify the target because the target itself is not separable.
+  \end{block}
+  \derivbutton{fuq-algebra}
+\end{frame}
+
+\begin{frame}{FAQ 3: What Is the Identification Strategy?}
+  \begin{itemize}
+    \item Identification strategy means: how observational data mimic an experiment.
+    \item Typical sources: policy rules, institutional thresholds, lotteries, timing differences.
+    \item Strategy must be described before estimation details.
+  \end{itemize}
+  \textbf{Guiding principle:} design first, mechanics second.
+\end{frame}
+
+\begin{frame}{FAQ 4: What Is the Mode of Inference?}
+  \begin{itemize}
+    \item What population does the sample represent?
+    \item What is the sampling/assignment process?
+    \item How should standard errors be computed (heteroskedasticity, clustering, design effects)?
+  \end{itemize}
+  \begin{block}{Why this matters}
+    You can have a strong design but still get misleading precision if inference is wrong.
+  \end{block}
+\end{frame}
+
+\begin{frame}{Workflow for Applied Work}
+  \begin{enumerate}
+    \item Write the causal estimand in words and symbols.
+    \item Describe an ideal randomized trial.
+    \item State what real-world variation approximates that trial.
+    \item Explain why inference assumptions match the data structure.
+  \end{enumerate}
+  \vspace{0.3em}
+  This sequence prevents most beginner mistakes.
+\end{frame}
+
+% \section{The Experimental Ideal}
+
+\begin{frame}{The Experimental Ideal: Motivation}
+  \begin{itemize}
+    \item Random assignment is the benchmark for causal credibility.
+    \item Nonexperimental comparisons often point in the wrong direction.
+    \item We need to understand why selection bias appears and how experiments remove it.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Hospital Example}
+  Question: Do hospitals make people healthier?
+  \begin{itemize}
+    \item Naive data comparison often shows hospitalized people in worse health.
+    \item This does not prove hospital care is harmful.
+    \item Sicker people are more likely to go to hospital in the first place.
+  \end{itemize}
+  \begin{block}{Interpretation}
+    Observed differences combine treatment effects and pre-treatment differences.
+  \end{block}
+\end{frame}
+
+\begin{frame}{Potential Outcomes Notation}
+  \hypertarget{main:po}{}
+  For each unit \(i\):
+  \[
+  Y_{1i} = \text{outcome if treated}, \qquad Y_{0i} = \text{outcome if untreated}.
+  \]
+  Treatment indicator: \(D_i \in \{0,1\}\).
+  Observed outcome:
+  \[
+  Y_i = Y_{0i} + (Y_{1i}-Y_{0i})D_i.
+  \]
+  \begin{itemize}
+    \item Individual causal effect: \(Y_{1i}-Y_{0i}\).
+    \item We never observe both potential outcomes for the same unit at the same time.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Fundamental Problem of Causal Inference}
+  \begin{itemize}
+    \item For treated units, \(Y_{0i}\) is missing.
+    \item For untreated units, \(Y_{1i}\) is missing.
+    \item Therefore causal inference is a missing-counterfactual problem.
+  \end{itemize}
+  \begin{block}{Key consequence}
+    We need assumptions or design features to reconstruct missing counterfactual means.
+  \end{block}
+\end{frame}
+
+\begin{frame}{Selection Bias Decomposition}
+  \hypertarget{main:decomp}{}
+  \[
+  \E[Y_i\mid D_i=1]-\E[Y_i\mid D_i=0]
+  =
+  \underbrace{\E[Y_{1i}-Y_{0i}\mid D_i=1]}_{\text{ATT}}
+  +
+  \underbrace{\E[Y_{0i}\mid D_i=1]-\E[Y_{0i}\mid D_i=0]}_{\text{selection bias}}.
+  \]
+  \begin{itemize}
+    \item Left side is observed mean difference.
+    \item First term is causal effect for treated units.
+    \item Second term is non-causal baseline difference between groups.
+  \end{itemize}
+  \derivbutton{decomp-proof}
+\end{frame}
+
+\begin{frame}{Numeric Intuition for Selection Bias}
+  Suppose observed difference is \(-0.70\) health points (higher = worse health).
+  \begin{itemize}
+    \item Treated group is sicker even without treatment: selection term is \(-1.00\).
+    \item Then treatment effect on treated is:
+    \[
+    \text{ATT} = -0.70 - (-1.00) = +0.30.
+    \]
+  \end{itemize}
+  \begin{block}{Interpretation}
+    Naive comparison says treatment looks harmful; corrected effect is beneficial.
+  \end{block}
+\end{frame}
+
+\begin{frame}{Why Random Assignment Solves the Selection Problem}
+  \hypertarget{main:rand}{}
+  Random assignment gives:
+  \[
+  D_i \indep (Y_{1i},Y_{0i}).
+  \]
+  Therefore:
+  \[
+  \E[Y_{0i}\mid D_i=1]=\E[Y_{0i}\mid D_i=0]
+  \]
+  so selection bias term is zero.
+  \[
+  \E[Y_i\mid D_i=1]-\E[Y_i\mid D_i=0]=\E[Y_{1i}-Y_{0i}].
+  \]
+  \begin{itemize}
+    \item Experiments create comparability by design, not by modeling assumptions.
+  \end{itemize}
+  \derivbutton{rand-proof}
+\end{frame}
+
+\begin{frame}{What Experiments Do Not Automatically Solve}
+  \begin{itemize}
+    \item Attrition can destroy comparability if dropout differs by treatment status.
+    \item Noncompliance weakens treatment contrast (assignment vs receipt).
+    \item Spillovers can violate stable treatment definitions.
+    \item Measurement problems can still bias results.
+  \end{itemize}
+  \textbf{Conclusion:} randomization is powerful, but implementation details still matter.
+\end{frame}
+
+\begin{frame}{Case Study: Tennessee STAR}
+  \begin{itemize}
+    \item Large education RCT on class size in early grades.
+    \item Students assigned to small class, regular class, or regular class plus aide.
+    \item Goal: estimate causal effect of class size on achievement.
+  \end{itemize}
+  Why influential:
+  \begin{itemize}
+    \item Design is transparent.
+    \item Policy relevance is immediate.
+    \item Results differ from many naive observational comparisons.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{STAR Balance and Interpretation}
+  Typical first check in any RCT: covariate balance across groups.
+  \begin{itemize}
+    \item Race, age, and free-lunch status should be similar if randomization worked.
+    \item Class-size differences should be large across arms (first-stage check).
+    \item Attrition differences need attention because they can induce bias later.
+  \end{itemize}
+  \begin{block}{Empirical lesson}
+    Even in RCTs, credibility comes from both assignment and execution quality.
+  \end{block}
+\end{frame}
+
+\begin{frame}{Experimental Effects from Means and Regressions}
+  In a two-group experiment, effect estimate is difference in means:
+  \[
+  \hat\tau = \bar Y_{D=1}-\bar Y_{D=0}.
+  \]
+  This is numerically equivalent to OLS coefficient from
+  \[
+  Y_i = \alpha + \rho D_i + u_i.
+  \]
+  \begin{itemize}
+    \item Here \(\hat\rho=\hat\tau\).
+    \item Regression is a convenient language for experimental analysis.
+  \end{itemize}
+  \derivbutton{ols-dim}
+\end{frame}
+
+\begin{frame}{Regression Analysis of Experiments}
+  \hypertarget{main:reg-exp}{}
+  With constant treatment effect model:
+  \[
+  Y_i = \alpha + \rho D_i + \eta_i,
+  \]
+  where \(\rho\) is causal effect and \(\eta_i\) captures untreated heterogeneity.
+  \vspace{0.3em}
+  \begin{itemize}
+    \item In randomized data, \(D_i\) is orthogonal to \(\eta_i\).
+    \item OLS recovers causal \(\rho\) without omitted variable bias.
+    \item Adding pre-treatment controls can improve precision.
+  \end{itemize}
+  \derivbutton{reg-causal}
+\end{frame}
+
+\begin{frame}{From Ideal Experiments to Quasi-Experiments}
+  \begin{itemize}
+    \item True RCTs are often expensive, slow, or infeasible.
+    \item Strategy: search for natural variation that is "as good as random".
+    \item Benchmark remains the notional randomized trial.
+  \end{itemize}
+  Example:
+  \begin{itemize}
+    \item Class-size caps create discontinuous class-size changes around enrollment thresholds.
+    \item Units near threshold can be highly comparable.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Chapter 2 Practical Checklist}
+  \begin{enumerate}
+    \item Define treatment and outcome precisely.
+    \item Write potential outcomes and target estimand.
+    \item Decompose observed difference into effect plus selection.
+    \item Ask if assignment is random or plausibly as-if random.
+    \item Audit threats: attrition, noncompliance, spillovers, inference.
+  \end{enumerate}
+\end{frame}
+
+\section{Synthesis for Lecture 1}
+
+\begin{frame}{Integrated Summary of Chapters 1 and 2}
+  \begin{itemize}
+    \item Chapter 1 gives the research-design blueprint (four FAQs).
+    \item Chapter 2 gives the formal causal engine (potential outcomes + selection problem + random assignment).
+    \item Regression enters as a practical estimator for experimental contrasts.
+    \item Credible empirical work combines clear question, design logic, and valid inference.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{What Students Should Be Able to Do After This Lecture}
+  \begin{itemize}
+    \item Distinguish causal questions from descriptive questions.
+    \item Write and interpret the selection-bias decomposition.
+    \item Explain why random assignment identifies average treatment effects.
+    \item Understand why OLS with a treatment dummy equals difference in means in experiments.
+    \item Use the four FAQs to structure research proposals.
+  \end{itemize}
+\end{frame}
+
+\appendix
+
+\begin{frame}{Appendix Map}
+  \begin{itemize}
+    \item A1: Selection-bias decomposition proof.
+    \item A2: Random assignment identification proof.
+    \item A3: OLS equals difference in means derivation.
+    \item A4: Constant-effect regression and causal interpretation.
+    \item A5: FUQ school-starting-age algebra.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Appendix A1: Selection-Bias Decomposition Proof}
+  \hypertarget{app:decomp-proof}{}
+  Start with observed gap:
+  \[
+  \E[Y_i\mid D_i=1]-\E[Y_i\mid D_i=0].
+  \]
+  \[
+  \E[Y_i\mid D_i=1]=\E[Y_{1i}\mid D_i=1], \quad
+  \E[Y_i\mid D_i=0]=\E[Y_{0i}\mid D_i=0].
+  \]
+  Add and subtract \(\E[Y_{0i}\mid D_i=1]\):
+  \[
+  \E[Y_{1i}-Y_{0i}\mid D_i=1]
+  +
+  \left(\E[Y_{0i}\mid D_i=1]-\E[Y_{0i}\mid D_i=0]\right).
+  \]
+  \backbutton{decomp}
+\end{frame}
+
+\begin{frame}{Appendix A2: Why Random Assignment Identifies Causal Effects}
+  \hypertarget{app:rand-proof}{}
+  If assignment is random:
+  \[
+  D_i \indep (Y_{1i},Y_{0i}).
+  \]
+  Then
+  \[
+  \E[Y_{1i}\mid D_i=1]=\E[Y_{1i}],\qquad
+  \E[Y_{0i}\mid D_i=0]=\E[Y_{0i}].
+  \]
+  Therefore observed difference simplifies to
+  \[
+  \E[Y_i\mid D_i=1]-\E[Y_i\mid D_i=0]
+  =
+  \E[Y_{1i}]-\E[Y_{0i}]
+  =
+  \E[Y_{1i}-Y_{0i}].
+  \]
+  Selection bias is eliminated because untreated potential outcomes are balanced by design.
+  \backbutton{rand}
+\end{frame}
+
+\begin{frame}{Appendix A3: OLS with Binary Treatment Equals Difference in Means}
+  \hypertarget{app:ols-dim}{}
+  Regression:
+  \[
+  Y_i=\alpha+\rho D_i+u_i,\quad D_i\in\{0,1\}.
+  \]
+  Predicted mean for controls (\(D=0\)):
+  \[
+  \E[Y\mid D=0]=\alpha.
+  \]
+  Predicted mean for treated (\(D=1\)):
+  \[
+  \E[Y\mid D=1]=\alpha+\rho.
+  \]
+  Subtract:
+  \[
+  \rho = \E[Y\mid D=1]-\E[Y\mid D=0].
+  \]
+  Sample OLS counterpart gives
+  \[
+  \hat\rho = \bar Y_{D=1}-\bar Y_{D=0}.
+  \]
+  \backbutton{reg-exp}
+\end{frame}
+
+\begin{frame}{Appendix A4: Constant-Effect Model and Causal Interpretation}
+  \hypertarget{app:reg-causal}{}
+  Suppose
+  \[
+  Y_i=Y_{0i}+\rho D_i,
+  \]
+  where \(\rho\) is constant across units.
+  Write
+  \[
+  Y_i=\alpha+\rho D_i+\eta_i,
+  \]
+  with
+  \[
+  \alpha=\E[Y_{0i}],\qquad \eta_i=Y_{0i}-\E[Y_{0i}].
+  \]
+  If \(D_i\indep Y_{0i}\), then \(\Cov(D_i,\eta_i)=0\), so OLS recovers \(\rho\).
+  \vspace{0.3em}
+  In observational data this orthogonality can fail, generating omitted-variable bias.
+  \backbutton{reg-exp}
+\end{frame}
+
+\begin{frame}{Appendix A5: FUQ Algebra for School Starting Age}
+  \hypertarget{app:fuq-algebra}{}
+  Let
+  \[
+  \text{Current age} = \text{start age} + \text{time in school}.
+  \]
+  If outcome is first-grade test score, then for children still in school:
+  \begin{itemize}
+    \item Varying start age changes current age at test.
+    \item Holding current age fixed changes time in school.
+  \end{itemize}
+  So direct effect of start age is not separable from maturation and schooling exposure in this setting.
+  \begin{block}{Key point}
+    Some targets are structurally unidentified in the available comparison frame.
+  \end{block}
+  \backbutton{fuq}
+\end{frame}
+
+\end{document}

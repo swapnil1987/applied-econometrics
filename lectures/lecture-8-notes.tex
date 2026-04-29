@@ -1,0 +1,565 @@
+\input{tufte-style.tex}
+
+\title{Applied Econometrics: Session 8 Notes\\Synthetic Control}
+\author{PhD Econometrics}
+\date{}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+These notes explain synthetic control as a method for causal inference when one unit is treated and the counterfactual path for that unit is missing. The central idea is simple: instead of choosing one untreated unit as the comparison group, build a weighted average of several untreated units that looks like the treated unit before treatment. The post-treatment difference between the treated unit and this synthetic comparison is interpreted as the treatment effect, subject to transparent pre-treatment fit, credible donor selection, and placebo-based inference.
+\end{abstract}
+
+\begin{boxD}
+\textbf{Reading and objective.} The main reading is Python Causality Handbook, Chapter 15, ``Synthetic Control.'' The companion Python file is \texttt{lectures/code/lecture-8-synthetic-control.py}. By the end of this session, students should be able to define the donor pool, construct predictor matrices, solve for convex synthetic-control weights, compute an effect path, run placebo tests, interpret RMSPE and RMSPE ratios, and explain why synthetic control differs from DiD, matching, and OLS regression.
+\end{boxD}
+
+\section{The Problem: One Treated Unit}
+
+Many policy questions have only one treated aggregate unit. A state passes a law. A country adopts a reform. A city introduces a congestion charge. A firm changes its pricing rule. We would like to know what happened because of the intervention, but we do not observe the treated unit in the untreated state after treatment.
+
+Let units be indexed by \(j=1,\ldots,J+1\), where unit \(1\) is treated and units \(2,\ldots,J+1\) are untreated. Time is indexed by \(t=1,\ldots,T\). The treatment begins after period \(T_0\), so periods \(t\leq T_0\) are pre-treatment and periods \(t>T_0\) are post-treatment.
+
+\begin{defN}
+\textbf{Potential outcomes for the treated unit.} Let
+\[
+Y^I_{1t}
+\]
+be the outcome of unit 1 at time \(t\) if treated, and
+\[
+Y^N_{1t}
+\]
+be the outcome of unit 1 at time \(t\) if not treated. The treatment effect at post-treatment time \(t>T_0\) is
+\[
+\tau_{1t}=Y^I_{1t}-Y^N_{1t}.
+\]
+\end{defN}
+
+For \(t>T_0\), we observe \(Y^I_{1t}\), because the unit is treated. We do not observe \(Y^N_{1t}\). Synthetic control is a disciplined way to estimate this missing counterfactual path.
+
+\begin{boxF}
+\textbf{The main causal question.} What would the treated unit's outcome have been after treatment if the treatment had not happened?
+\end{boxF}
+
+The method is especially useful when the number of treated units is small but the time dimension is meaningful. Difference-in-differences works naturally with many treated and control observations; synthetic control is designed for settings where there may be only one treated aggregate unit.
+
+\section{Why Not Just Pick One Control Unit?}
+
+Suppose California passes an anti-smoking policy and we want to measure its effect on cigarette consumption. We could compare California with Nevada, Texas, New York, or the average of all untreated states. Each of these choices is fragile.
+
+One donor state may have different demographics, income, climate, health attitudes, taxation history, and pre-treatment cigarette trends. The average of all untreated states may be too crude because it gives equal weight to clearly irrelevant donors. A good comparison unit should look like California before the policy in the variables that matter for future cigarette consumption.
+
+\begin{defN}
+\textbf{Donor pool.} The donor pool is the set of untreated units that are eligible to contribute to the synthetic comparison unit. The donor pool should exclude units that were treated, partially treated, strongly affected by spillovers, or structurally incomparable.
+\end{defN}
+
+\begin{boxD}
+\textbf{Bad donors.} A donor is bad if it violates the logic of the counterfactual. Examples include a state that adopted a similar policy, a neighboring state affected by cross-border shopping, a unit with missing pre-treatment data, or a unit whose economic structure makes it impossible to compare with the treated unit.
+\end{boxD}
+
+Synthetic control does not remove the need for judgment. It makes the judgment explicit. You must say which units are eligible donors, which predictors matter, and whether the pre-treatment fit is good enough to support a post-treatment causal interpretation.
+
+\section{The Synthetic Control Idea}
+
+The core idea is to build a fake untreated version of the treated unit by averaging untreated units:
+\[
+\widehat{Y}^N_{1t}=\sum_{j=2}^{J+1}w_jY_{jt}.
+\]
+The weights \(w_j\) determine how much each donor contributes. If the weights are chosen so that the synthetic unit resembles the treated unit before treatment, then the synthetic unit gives a plausible estimate of what would have happened to the treated unit after treatment without the intervention.
+
+\begin{defN}
+\textbf{Synthetic control.} A synthetic control for treated unit 1 is a weighted average of donor units,
+\[
+\widehat{Y}^{SC}_{1t}=\sum_{j=2}^{J+1}w_jY_{jt},
+\]
+where the weights are chosen using only pre-treatment information.
+\end{defN}
+
+\begin{assN}
+\textbf{No post-treatment information in weight choice.} The weights must be chosen using only pre-treatment outcomes and predictors. If post-treatment outcomes are used to choose weights, the estimator is contaminated by the treatment effect itself.
+\end{assN}
+
+The method is not magic. It says: if we can reproduce the treated unit's pre-treatment history with a weighted average of untreated units, then we have evidence that the same weighted average is informative about the untreated post-treatment path.
+
+\section{Predictors and Predictor Matrices}
+
+Synthetic control usually matches the treated unit and donor units on pre-treatment predictors. These predictors can include lagged outcomes, demographic variables, prices, income, unemployment, education, sectoral shares, or any variable that predicts the untreated outcome.
+
+Let there be \(K\) predictors. Define
+\[
+X_1=
+\begin{bmatrix}
+X_{11}\\
+X_{21}\\
+\vdots\\
+X_{K1}
+\end{bmatrix}
+\]
+as the \(K\times 1\) predictor vector for the treated unit. Define
+\[
+X_0=
+\begin{bmatrix}
+X_{12} & X_{13} & \cdots & X_{1,J+1}\\
+X_{22} & X_{23} & \cdots & X_{2,J+1}\\
+\vdots & \vdots & \ddots & \vdots\\
+X_{K2} & X_{K3} & \cdots & X_{K,J+1}
+\end{bmatrix}
+\]
+as the \(K\times J\) predictor matrix for donor units. The synthetic predictor vector is
+\[
+X_0W,
+\quad
+W=
+\begin{bmatrix}
+w_2\\
+\vdots\\
+w_{J+1}
+\end{bmatrix}.
+\]
+
+\begin{exmp}
+\textbf{Predictors in the smoking example.} In the Python example, the outcome is per-capita cigarette sales. Predictors may include pre-treatment cigarette sales in multiple years and retail price. The script \texttt{lectures/code/lecture-8-synthetic-control.py} constructs the data so that donor states become columns and pre-treatment features become rows. The algorithm then finds weights that make the donor columns reproduce the California column as closely as possible before Proposition 99.
+\end{exmp}
+
+Lagged outcomes are often powerful predictors because they summarize many unobserved determinants. If California had a consistently lower cigarette consumption level before treatment, the synthetic California should also have a lower level before treatment. If the trend was downward before treatment, the synthetic control should reproduce that trend.
+
+\section{The Weighting Problem}
+
+The usual synthetic control problem chooses weights to minimize the distance between \(X_1\) and \(X_0W\):
+\[
+\min_W \quad (X_1-X_0W)'V(X_1-X_0W),
+\]
+subject to
+\[
+w_j\geq 0 \quad \text{for all }j=2,\ldots,J+1,
+\]
+and
+\[
+\sum_{j=2}^{J+1}w_j=1.
+\]
+Here \(V\) is a \(K\times K\) positive semidefinite matrix that determines the relative importance of predictors.
+
+\begin{defN}
+\textbf{Convex weights.} Weights are convex when each weight is nonnegative and all weights sum to one. A convex synthetic control is an interpolation of donor units, not an extrapolation beyond them.
+\end{defN}
+
+The constraint \(w_j\geq 0\) prevents negative donors. The constraint \(\sum_j w_j=1\) prevents the algorithm from scaling the donor pool up or down arbitrarily. Together, these restrictions force the synthetic unit to live inside the convex hull of the donor units.
+
+\begin{boxF}
+\textbf{Intuition.} A synthetic control is like making a blended comparison unit. If the donor pool contains cities A, B, and C, the synthetic city might be \(0.50A+0.30B+0.20C\). It cannot be \(1.40A-0.40B\), because that would use a negative amount of B and would extrapolate outside the observed donor units.
+\end{boxF}
+
+\subsection{Why Not OLS Weights?}
+
+It is tempting to regress the treated unit's pre-treatment outcomes on donor outcomes and use the OLS coefficients as weights. Algebraically, this looks similar:
+\[
+Y_{1,pre}=Y_{0,pre}\beta+u.
+\]
+But OLS weights can be negative, can exceed one, and need not sum to one. This creates extrapolation.
+
+For example, suppose two donor units have predictor values \(8\) and \(4\). A negative weight on the second donor can help fit a treated unit with predictor value outside the donor range, but the fit is obtained by constructing a counterfactual that is not a realistic average of observed units. With many donor units and many pre-treatment periods, OLS can also overfit the pre-treatment path and produce a noisy, unstable post-treatment synthetic outcome.
+
+\begin{boxD}
+\textbf{OLS danger.} A perfect pre-treatment OLS fit is not automatically good news. It may mean the model used too much flexibility, including negative and extreme weights, to chase noise.
+\end{boxD}
+
+\section{Pre-Treatment Fit}
+
+After computing weights, the first diagnostic is the pre-treatment fit. Plot \(Y_{1t}\) and \(\widehat{Y}^{SC}_{1t}\) for all pre-treatment periods. Also compute the pre-treatment gap:
+\[
+g_t=Y_{1t}-\widehat{Y}^{SC}_{1t}.
+\]
+For \(t\leq T_0\), this gap should be small and should not show systematic trend breaks.
+
+A common summary is the root mean squared prediction error:
+\[
+RMSPE_{pre}
+=
+\sqrt{
+\frac{1}{T_0}
+\sum_{t=1}^{T_0}
+\left(Y_{1t}-\widehat{Y}^{SC}_{1t}\right)^2
+}.
+\]
+
+\begin{defN}
+\textbf{Pre-treatment RMSPE.} The pre-treatment RMSPE measures how well the synthetic control reproduces the treated unit before treatment. Smaller values indicate better pre-treatment fit.
+\end{defN}
+
+The goal is not mechanically zero RMSPE. The goal is a fit that is close enough to make the post-treatment comparison credible without using an implausible donor pool or overfit weights. In practice, the plot is often more informative than a single number.
+
+\section{The Effect Path}
+
+Once weights are fixed, estimate the treatment effect at each post-treatment period:
+\[
+\widehat{\tau}_{1t}
+=
+Y_{1t}-\widehat{Y}^{SC}_{1t}
+=
+Y_{1t}-\sum_{j=2}^{J+1}w_jY_{jt},
+\quad t>T_0.
+\]
+This produces an effect path rather than one average effect. The effect may be immediate, delayed, temporary, persistent, increasing, or decreasing.
+
+\begin{exmp}
+\textbf{California Proposition 99.} In the handbook example, California is the treated state and the intervention is Proposition 99 in 1988. The synthetic control is a weighted average of other states. If California's observed cigarette sales fall below synthetic California after 1988, the estimated effect is negative: cigarette sales are lower than they would have been without the policy.
+\end{exmp}
+
+The sign convention matters. If the gap is defined as treated minus synthetic, a negative gap means the treated unit has a lower outcome than its estimated counterfactual. For cigarette sales, a negative effect is consistent with the policy reducing smoking. For employment, revenue, or graduation rates, the substantive interpretation would differ.
+
+\section{Inference by Placebo Tests}
+
+Classical standard errors are not natural here because there may be only one treated unit. Synthetic control inference usually relies on placebo or permutation logic.
+
+The idea is to pretend, one at a time, that each donor unit was treated at the same date. For each placebo unit \(j\), remove it from the donor pool, construct its synthetic control from the remaining units, and compute the placebo gap:
+\[
+\widehat{\tau}^{pl}_{jt}
+=
+Y_{jt}-\widehat{Y}^{SC}_{jt}.
+\]
+Then compare the treated unit's gap with the distribution of placebo gaps.
+
+\begin{defN}
+\textbf{Placebo test.} A placebo test assigns fake treatment status to untreated units and asks whether the real treated unit shows a post-treatment gap that is unusually large relative to the fake gaps.
+\end{defN}
+
+This is close in spirit to Fisher randomization inference. If treatment assignment were exchangeable across units, then the treated unit should not look unusually extreme relative to placebo units unless the treatment had an effect. In observational policy settings, exchangeability is an assumption, not a design fact, so the placebo test should be interpreted as a transparent diagnostic rather than automatic proof.
+
+\subsection{Placebo P-Values}
+
+For a one-sided hypothesis that the treatment decreases the outcome, choose a post-treatment summary statistic \(S_j\), such as the final-period gap or the average post-treatment gap. If more negative values indicate stronger effects, a placebo p-value can be computed as
+\[
+p
+=
+\frac{
+1+\sum_{j\neq 1}\mathbf{1}\{S_j\leq S_1\}
+}{
+1+J
+}.
+\]
+The added ones include the treated unit in the permutation distribution and avoid a zero p-value in a finite donor pool.
+
+For a two-sided test, use absolute values:
+\[
+p
+=
+\frac{
+1+\sum_{j\neq 1}\mathbf{1}\{|S_j|\geq |S_1|\}
+}{
+1+J
+}.
+\]
+
+\begin{boxD}
+\textbf{Interpretation.} A p-value of \(1/35\) means that only one unit in the treated-plus-placebo distribution is at least as extreme as the real treated unit. It does not mean that the treatment was randomly assigned in the original policy process.
+\end{boxD}
+
+\section{RMSPE Ratios}
+
+Some placebo units are poorly fit before treatment. If a placebo unit has terrible pre-treatment fit, its post-treatment gap is not very informative. It was not matched well even when there was no treatment.
+
+For each unit \(j\), compute
+\[
+RMSPE_{j,pre}
+=
+\sqrt{
+\frac{1}{T_0}
+\sum_{t=1}^{T_0}
+\left(Y_{jt}-\widehat{Y}^{SC}_{jt}\right)^2
+}
+\]
+and
+\[
+RMSPE_{j,post}
+=
+\sqrt{
+\frac{1}{T-T_0}
+\sum_{t=T_0+1}^{T}
+\left(Y_{jt}-\widehat{Y}^{SC}_{jt}\right)^2
+}.
+\]
+The RMSPE ratio is
+\[
+R_j=\frac{RMSPE_{j,post}}{RMSPE_{j,pre}}.
+\]
+
+\begin{defN}
+\textbf{RMSPE ratio.} The RMSPE ratio compares post-treatment discrepancy with pre-treatment discrepancy. A large ratio says: this unit was fit well before treatment, but diverged strongly after treatment.
+\end{defN}
+
+RMSPE ratios are useful because they penalize units that always had poor fit. A large raw post-treatment gap is less impressive if the unit also had large pre-treatment gaps.
+
+\section{Worked Numerical Example}
+
+Consider one treated city and three donor cities. The outcome is annual visits to a public library. A new reading program begins in the treated city after year 3.
+
+\[
+\begin{array}{c|ccc|c}
+\text{city} & Y_1 & Y_2 & Y_3 & Y_4\\
+\hline
+\text{treated} & 100 & 105 & 110 & 130\\
+\text{donor A} & 90 & 95 & 100 & 102\\
+\text{donor B} & 110 & 115 & 120 & 122\\
+\text{donor C} & 100 & 106 & 111 & 113
+\end{array}
+\]
+
+Years 1--3 are pre-treatment and year 4 is post-treatment. If we choose weights
+\[
+w_A=0,\quad w_B=0,\quad w_C=1,
+\]
+then the synthetic control exactly follows donor C. The pre-treatment gaps are
+\[
+100-100=0,\quad 105-106=-1,\quad 110-111=-1.
+\]
+The pre-treatment RMSPE is
+\[
+\sqrt{\frac{0^2+(-1)^2+(-1)^2}{3}}
+=
+\sqrt{\frac{2}{3}}
+\approx 0.82.
+\]
+The year-4 synthetic outcome is \(113\). The estimated treatment effect is
+\[
+\widehat{\tau}_{14}=130-113=17.
+\]
+The reading program is associated with 17 additional visits relative to the synthetic counterfactual.
+
+\begin{boxF}
+\textbf{What the example teaches.} We did not compare the treated city to all donors equally. We used pre-treatment similarity to construct the counterfactual. The post-treatment effect is credible only because the pre-treatment fit is good and donor C was not treated.
+\end{boxF}
+
+\section{Workflow for an Applied Project}
+
+\begin{enumerate}
+\item Define the treated unit and treatment date. Be precise about when treatment begins and whether anticipation is possible.
+\item Build the donor pool. Exclude treated, contaminated, or incomparable units.
+\item Choose predictors. Include important pre-treatment covariates and lagged outcomes.
+\item Construct \(X_1\), \(X_0\), and the outcome panel \(Y_{jt}\).
+\item Estimate convex weights using pre-treatment data only.
+\item Report weights. Identify which donors actually matter.
+\item Plot treated and synthetic outcomes over time.
+\item Plot the gap \(Y_{1t}-\widehat{Y}^{SC}_{1t}\).
+\item Compute pre-treatment RMSPE and inspect pre-treatment gaps.
+\item Run placebo tests and compute placebo p-values or RMSPE ratios.
+\item Conduct sensitivity checks: donor exclusions, predictor choices, treatment timing, and alternative pre-treatment windows.
+\item Interpret the magnitude in economic units, not only statistical language.
+\end{enumerate}
+
+\section{Sensitivity and Robustness}
+
+Synthetic control results should not be presented as a single black-box estimate. Students should ask:
+
+\begin{itemize}
+\item Do results change when one high-weight donor is removed?
+\item Do results change when an arguably bad donor is excluded?
+\item Do results change when predictors are reweighted or scaled?
+\item Is there evidence of an effect before the treatment date?
+\item Are placebo effects usually smaller than the treated effect?
+\item Is the treated unit inside the support of the donor pool?
+\item Is the post-treatment gap large relative to pre-treatment noise?
+\end{itemize}
+
+A strong synthetic control analysis is transparent. The reader should be able to see why the donor pool is credible, how the synthetic unit was constructed, and whether the treatment effect appears after the policy rather than before it.
+
+\section{Limitations}
+
+Synthetic control has several important limitations.
+
+First, if the treated unit is unlike all donor units, no convex combination can match it well. Bad pre-treatment fit weakens the design.
+
+Second, synthetic control cannot fix a contaminated donor pool. If donor units are affected by the treatment through spillovers, the counterfactual is biased.
+
+Third, the method needs enough pre-treatment periods to assess fit. With very short pre-treatment histories, the weights are unstable and diagnostics are weak.
+
+Fourth, inference is limited by the number and quality of placebo units. A small donor pool gives coarse p-values.
+
+Fifth, treatment timing must be credible. If units anticipate the policy before the official treatment date, pre-treatment outcomes may already be affected.
+
+\begin{assN}
+\textbf{No interference and no anticipation.} Donor outcomes must not be affected by treatment of the treated unit, and the treated unit's pre-treatment outcomes must not be affected by anticipation of the treatment.
+\end{assN}
+
+\section{Comparison with DiD and Matching}
+
+\subsection{Synthetic Control vs. Difference-in-Differences}
+
+Difference-in-differences usually compares average changes:
+\[
+\widehat{\tau}^{DiD}
+=
+(\bar{Y}_{T,post}-\bar{Y}_{T,pre})
+-
+(\bar{Y}_{C,post}-\bar{Y}_{C,pre}).
+\]
+Its central identifying assumption is parallel trends: absent treatment, treated and control groups would have changed similarly.
+
+Synthetic control weakens the need to choose one control group by constructing a weighted control unit. Instead of assuming an unweighted control average has the right trend, it asks whether a weighted average can reproduce the treated unit before treatment.
+
+\begin{boxD}
+\textbf{Simple contrast.} DiD says: compare changes between treated and control groups. Synthetic control says: first build a control unit that looked like the treated unit before treatment, then compare post-treatment paths.
+\end{boxD}
+
+\subsection{Synthetic Control vs. Matching}
+
+Matching pairs treated and untreated observations with similar covariates, often in cross-sectional data. Synthetic control is matching with time and aggregate units: it matches the treated unit to a weighted average of donor units using pre-treatment predictors and outcomes.
+
+Matching often estimates an average effect across many treated units. Synthetic control often estimates a path of effects for one treated unit.
+
+\subsection{Synthetic Control vs. OLS Regression}
+
+OLS minimizes squared prediction error but permits negative and large weights. Synthetic control imposes convexity to avoid extrapolation and improve interpretability. OLS may fit pre-treatment data better, but a better in-sample fit is not the same as a better counterfactual.
+
+\section{Common Mistakes}
+
+\begin{boxD}
+\textbf{Mistake 1: using post-treatment data to choose weights.} This directly uses the outcome affected by treatment to build the counterfactual.
+\end{boxD}
+
+\begin{boxD}
+\textbf{Mistake 2: ignoring bad pre-treatment fit.} If treated and synthetic outcomes diverge before treatment, a post-treatment gap is not convincing evidence of a treatment effect.
+\end{boxD}
+
+\begin{boxD}
+\textbf{Mistake 3: treating placebo p-values mechanically.} Placebo tests depend on the donor pool and exchangeability logic. They are not the same as large-sample regression standard errors.
+\end{boxD}
+
+\begin{boxD}
+\textbf{Mistake 4: hiding the weights.} The weights are substantive evidence. If one strange donor receives most of the weight, the reader needs to know.
+\end{boxD}
+
+\begin{boxD}
+\textbf{Mistake 5: forgetting scale.} Predictors measured in large units can dominate the optimization unless predictors are standardized or \(V\) is chosen carefully.
+\end{boxD}
+
+\section{Using the Python Example}
+
+The file \texttt{lectures/code/lecture-8-synthetic-control.py} is meant to be read alongside these notes. Students should focus on five operations in the code:
+
+\begin{enumerate}
+\item Reshape the data so pre-treatment predictors are rows and units are columns.
+\item Separate the treated unit vector \(y\) from donor matrix \(X\).
+\item Solve for weights under nonnegativity and sum-to-one constraints.
+\item Construct the synthetic outcome path by matrix multiplication.
+\item Repeat the procedure for placebo units and compare gaps.
+\end{enumerate}
+
+The most important line conceptually is the dot product:
+\[
+\widehat{Y}^{SC}_{1t}=\sum_{j=2}^{J+1}w_jY_{jt}.
+\]
+In code, this is implemented as a matrix of donor outcomes multiplied by the estimated weight vector.
+
+\section{Worked Problems}
+
+\subsection*{Problem 1: Computing a Synthetic Outcome}
+
+Suppose the donor outcomes in a post-treatment year are
+\[
+Y_A=50,\quad Y_B=70,\quad Y_C=90,
+\]
+and the estimated weights are
+\[
+w_A=0.20,\quad w_B=0.50,\quad w_C=0.30.
+\]
+The treated unit's observed outcome is \(80\). Compute the synthetic outcome and treatment effect.
+
+\textbf{Solution.}
+\[
+\widehat{Y}^{SC}
+=0.20(50)+0.50(70)+0.30(90)
+=10+35+27
+=72.
+\]
+The treatment effect is
+\[
+\widehat{\tau}=80-72=8.
+\]
+The treated unit is 8 units above its synthetic counterfactual.
+
+\subsection*{Problem 2: Checking Convexity}
+
+Are the weights
+\[
+(0.40,0.35,0.30)
+\]
+valid synthetic-control weights?
+
+\textbf{Solution.} They are all nonnegative, but they sum to
+\[
+0.40+0.35+0.30=1.05.
+\]
+They are not valid convex weights because they do not sum to one.
+
+\subsection*{Problem 3: RMSPE}
+
+The pre-treatment gaps are
+\[
+2,\quad -1,\quad 3,\quad 0.
+\]
+Compute pre-treatment RMSPE.
+
+\textbf{Solution.}
+\[
+RMSPE_{pre}
+=
+\sqrt{\frac{2^2+(-1)^2+3^2+0^2}{4}}
+=
+\sqrt{\frac{14}{4}}
+=
+\sqrt{3.5}
+\approx 1.87.
+\]
+
+\subsection*{Problem 4: Placebo P-Value}
+
+The treated unit has post-treatment summary \(S_1=-12\). Five placebo units have summaries
+\[
+-2,\quad -5,\quad -14,\quad 3,\quad -1.
+\]
+For a one-sided test of a negative effect, compute the finite-sample placebo p-value including the treated unit.
+
+\textbf{Solution.} More negative values are more extreme. One placebo value, \(-14\), is at least as negative as \(-12\). Including the treated unit,
+\[
+p=\frac{1+1}{1+5}=\frac{2}{6}=0.333.
+\]
+The treated effect is not very unusual relative to the placebo distribution.
+
+\section{Checklist for Students}
+
+\begin{itemize}
+\item Can you state the treated unit, donor pool, treatment date, and outcome?
+\item Did you exclude treated, contaminated, and incomparable donors?
+\item Did you choose predictors using only pre-treatment information?
+\item Can you write down \(X_1\), \(X_0\), and \(W\)?
+\item Do the weights satisfy \(w_j\geq 0\) and \(\sum_jw_j=1\)?
+\item Which donor units receive nonzero weight?
+\item Does the synthetic control fit the treated unit before treatment?
+\item What is the sign and magnitude of the post-treatment gap?
+\item Are placebo gaps usually smaller than the treated gap?
+\item Are conclusions robust to donor and predictor changes?
+\item Can you explain the result in economic language?
+\end{itemize}
+
+\section{Practice Questions}
+
+\begin{enumerate}
+\item Why is synthetic control useful when there is only one treated state or country?
+\item What is the missing counterfactual in a synthetic control study?
+\item Why should post-treatment outcomes never be used to choose weights?
+\item What makes a donor unit inappropriate?
+\item Explain the difference between OLS weights and convex synthetic-control weights.
+\item What does a negative treated-minus-synthetic gap mean in the smoking example?
+\item Why is pre-treatment fit central to credibility?
+\item What does RMSPE measure?
+\item Why might we remove placebo units with very poor pre-treatment fit?
+\item How do placebo tests help with inference when there is one treated unit?
+\item How is synthetic control related to matching?
+\item How is synthetic control related to difference-in-differences?
+\item What robustness checks would you report in an applied paper?
+\item If one donor receives 90 percent of the weight, what should you investigate?
+\item What would you conclude if the treated unit diverges from the synthetic control before the policy date?
+\end{enumerate}
+
+\end{document}

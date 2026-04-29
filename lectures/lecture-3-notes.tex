@@ -1,0 +1,961 @@
+\input{tufte-style.tex}
+
+\title{Applied Econometrics: Session 3}
+\author{PhD Intensive Course}
+\date{}
+
+\hypersetup{
+  pdftitle={Applied Econometrics Session 3: Stats Review},
+  pdfauthor={Swapnil Singh},
+  pdfkeywords={econometrics, inference, standard errors, confidence intervals, p-values, causal inference}
+}
+
+\setlength{\headheight}{26pt}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+This note reviews the statistical layer that sits on top of causal design.
+The main theme is the ``most dangerous equation'': the standard error of an
+average falls at rate $1/\sqrt{n}$, not at rate $1/n$. This simple fact explains
+why small groups often look extreme in rankings, why randomized experiments
+can be correct in design but noisy in finite samples, and why applied
+econometrics must report uncertainty together with point estimates. We cover
+estimands, estimators, estimates, sampling variation, standard errors,
+confidence intervals, hypothesis tests, p-values, power, multiple testing, and
+the relationship between uncertainty and causal interpretation.
+\end{abstract}
+
+\begin{boxD}
+\textbf{Reading and objective.} Read Chapter 03, ``Stats Review: The Most
+Dangerous Equation,'' from \emph{Causal Inference for the Brave and True}.
+The objective is not to memorize formulas mechanically. The objective is to
+learn how to read an empirical result as one noisy realization from a sampling
+process, and to separate three questions: what is the causal target, what is
+the estimator, and how uncertain is the estimate?
+\end{boxD}
+
+\section{Why This Lecture Matters}
+
+The first two lectures were about causal meaning. We asked what it means to
+say that a treatment caused an outcome, how potential outcomes define causal
+effects, why selection bias is dangerous, and why regression is best understood
+as a conditional expectation approximation unless stronger assumptions give it
+causal content.
+
+This lecture adds the statistical layer. Even when the causal design is
+excellent, the estimate in a paper is still computed from a finite sample. A
+different random sample, or a different random assignment, would usually have
+produced a different number. That movement from sample to sample is called
+sampling variation.
+
+\begin{boxF}
+\textbf{Key warning.} A credible research design can produce an imprecise
+estimate. A precise estimate can still be biased. Identification and inference
+solve different problems.
+\end{boxF}
+
+An applied empirical claim should therefore contain at least four parts:
+\begin{enumerate}
+  \item the target parameter or estimand;
+  \item the estimator used to learn about that target;
+  \item the numerical estimate obtained in the sample;
+  \item a measure of uncertainty, usually a standard error or confidence
+  interval.
+\end{enumerate}
+
+\section{Estimand, Estimator, and Estimate}
+
+\begin{defN}[Estimand]
+An estimand is the population object we want to learn. In causal work it is
+often an average treatment effect,
+\[
+  \ATE = \E[Y_1 - Y_0],
+\]
+or an average treatment effect for a subpopulation, such as $\ATT$.
+\end{defN}
+
+\begin{defN}[Estimator]
+An estimator is a rule that maps data into a number. For example, in a
+randomized experiment with a treated group and a control group, a natural
+estimator of the average treatment effect is
+\[
+  \hat{\tau} = \bar{Y}_1 - \bar{Y}_0.
+\]
+Before the data are realized, $\hat{\tau}$ is a random variable.
+\end{defN}
+
+\begin{defN}[Estimate]
+An estimate is the actual numerical value produced by applying an estimator to
+one dataset. If the treated mean is $76.3$ and the control mean is $72.1$, the
+estimate is
+\[
+  \hat{\tau} = 76.3 - 72.1 = 4.2.
+\]
+\end{defN}
+
+Students often mix these objects. The estimand is the thing in the world we
+would like to know. The estimator is the recipe. The estimate is the number on
+the page. Standard errors describe the behavior of the recipe across repeated
+samples, not the moral importance of the number and not the truth of the
+identifying assumption.
+
+\begin{exmp}[Tutoring program]
+Suppose a university randomly offers tutoring to half of first-year students.
+The causal estimand might be the average effect of tutoring on exam scores for
+this population. The estimator might be the treated mean minus the control
+mean. The estimate might be $4.2$ exam points. The standard error then tells us
+how much this difference-in-means estimator would typically move if the
+experiment were repeated.
+\end{exmp}
+
+\section{Sampling Variation}
+
+Imagine a large population of students with average exam score $\mu=70$ and
+individual standard deviation $\sigma=12$. If we draw one classroom of $25$
+students, the classroom average might be $66$. If we draw another classroom of
+$25$ students, the average might be $73$. Neither classroom average is the
+population mean. Each is one noisy estimate of the population mean.
+
+\begin{defN}[Sampling variation]
+Sampling variation is the variation in an estimator across repeated samples
+generated by the same sampling process.
+\end{defN}
+
+\begin{defN}[Sampling distribution]
+The sampling distribution of an estimator is the probability distribution of
+the estimator across repeated samples. The population distribution describes
+individual observations. The sampling distribution describes statistics
+computed from samples.
+\end{defN}
+
+This distinction matters. A standard deviation describes the dispersion of
+individual outcomes. A standard error describes the dispersion of an estimator.
+For instance, students may differ a lot in exam scores, but if we observe a
+very large number of students, the average exam score may still be estimated
+very precisely.
+
+\section{The School-Ranking Trap}
+
+The Python Causality Handbook chapter begins with a simple but powerful idea:
+small groups are more likely to produce extreme averages. This is the logic
+behind Howard Wainer's phrase ``the most dangerous equation.''
+
+Consider school rankings based on average test scores. Some schools have only
+20 tested students, while others have 500. Even if all schools were equally
+good, the small schools would have much noisier average scores because the
+average is based on fewer observations. Therefore small schools would be
+overrepresented among the best observed schools. They would also be
+overrepresented among the worst observed schools.
+
+\begin{boxD}
+\textbf{Diagnostic for rankings.} If a small group appears surprisingly often
+at the top of a ranking, check the bottom of the ranking. If the same kind of
+small group also appears at the bottom, the pattern is probably about noise,
+not excellence.
+\end{boxD}
+
+\begin{exmp}[Schools with no size effect]
+Suppose school quality is independent of enrollment. Let the true school mean
+be
+\[
+  \mu_j = 70 + q_j,
+  \qquad q_j \sim \Normal(0,2^2),
+\]
+and let the observed school average be
+\[
+  \bar{Y}_j = \mu_j + u_j,
+  \qquad u_j \sim \Normal\left(0,\frac{12^2}{n_j}\right).
+\]
+The variance of the noise term is larger when $n_j$ is smaller. Thus the
+smallest schools naturally generate the most volatile observed averages.
+\end{exmp}
+
+The course script \texttt{lectures/code/lecture-3-stats-review.py} simulates
+this exact logic. It creates many schools with different enrollments, assigns
+true school quality independently of size, and then adds sampling noise with
+standard deviation $12/\sqrt{n_j}$. The script prints the average school size
+among top, middle, and bottom observed performers. The intended lesson is that
+extreme observed performance need not reveal extreme true quality.
+
+\section{The Most Dangerous Equation}
+
+\begin{thmN}[Standard error of the sample mean]
+Let $Y_1,\ldots,Y_n$ be independent observations with
+\[
+  \E[Y_i]=\mu,
+  \qquad
+  \Var(Y_i)=\sigma^2.
+\]
+The sample mean
+\[
+  \bar{Y} = \frac{1}{n}\sum_{i=1}^n Y_i
+\]
+has variance
+\[
+  \Var(\bar{Y}) = \frac{\sigma^2}{n}
+\]
+and standard error
+\[
+  \se(\bar{Y}) = \frac{\sigma}{\sqrt{n}}.
+\]
+\end{thmN}
+
+\begin{proof}
+Using independence,
+\[
+  \Var(\bar{Y})
+  =
+  \Var\left(\frac{1}{n}\sum_{i=1}^n Y_i\right)
+  =
+  \frac{1}{n^2}\Var\left(\sum_{i=1}^n Y_i\right)
+  =
+  \frac{1}{n^2}\sum_{i=1}^n \Var(Y_i).
+\]
+Since each variance is $\sigma^2$,
+\[
+  \Var(\bar{Y})
+  =
+  \frac{1}{n^2}n\sigma^2
+  =
+  \frac{\sigma^2}{n}.
+\]
+Taking the square root gives $\se(\bar{Y})=\sigma/\sqrt{n}$.
+\end{proof}
+
+The dangerous part is the square root. Precision improves slowly. To cut the
+standard error in half, we need four times as many observations.
+
+\begin{center}
+\begin{tabular}{rcc}
+\toprule
+Sample size $n$ & $\se(\bar{Y})=12/\sqrt{n}$ & Interpretation \\
+\midrule
+25 & 2.40 & noisy average \\
+100 & 1.20 & half as noisy \\
+400 & 0.60 & half again \\
+1600 & 0.30 & half again \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{boxF}
+\textbf{Common mistake.} Do not say that increasing the sample from $100$ to
+$200$ cuts the standard error in half. It cuts the standard error by a factor
+of $\sqrt{100/200}=1/\sqrt{2}$, about $0.71$.
+\end{boxF}
+
+\section{Standard Deviation Versus Standard Error}
+
+\begin{center}
+\begin{tabular}{p{0.42\linewidth}p{0.42\linewidth}}
+\toprule
+Standard deviation & Standard error \\
+\midrule
+Spread of individual outcomes & Spread of an estimator \\
+Describes students, workers, firms, schools & Describes $\bar{Y}$, $\hat{\beta}$, $\widehat{\ATE}$ \\
+Usually does not vanish with $n$ & Usually shrinks as sample size grows \\
+Answers: how different are units? & Answers: how precise is the estimate? \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+If students differ greatly in ability, the standard deviation of scores may be
+large. But if we observe thousands of students, the average score may be known
+quite precisely. Conversely, a small pilot study may have an average that moves
+a lot across samples even when individual outcomes are not especially
+variable.
+
+\section{Estimators Are Random Variables}
+
+Before data are observed, the sample mean is random:
+\[
+  \bar{Y} = \frac{1}{n}\sum_{i=1}^n Y_i.
+\]
+After data are observed, $\bar{Y}$ becomes a number. In inference, we reason
+about the estimator before the data were realized. This is why we can say that
+a reported estimate is one point from a cloud of estimates that could have
+been obtained under repeated sampling.
+
+\begin{assN}[Independent sampling]
+For the elementary formulas in this lecture, observations are treated as
+independent draws from a common population distribution. Later in the course,
+we will relax this with heteroskedasticity-robust, clustered, and time-series
+standard errors.
+\end{assN}
+
+\begin{boxD}
+\textbf{Mental model.} The estimate in a table is not the whole cloud. It is
+one draw from the cloud. The standard error estimates the cloud's width.
+\end{boxD}
+
+\section{Bias and Variance}
+
+It is useful to separate two components of estimation error:
+\[
+  \hat{\theta}-\theta
+  =
+  \underbrace{\E[\hat{\theta}]-\theta}_{\text{bias}}
+  +
+  \underbrace{\hat{\theta}-\E[\hat{\theta}]}_{\text{sampling noise}}.
+\]
+Identification assumptions aim at the first term. Standard errors describe
+the second term.
+
+\begin{boxF}
+\textbf{Bad inference habit.} A small standard error does not rescue a biased
+research design. It only says that the biased estimator is tightly estimated.
+\end{boxF}
+
+For causal work this distinction is essential. A randomized experiment can
+make $\E[\hat{\tau}]$ equal to the causal estimand, but in a small experiment
+$\hat{\tau}$ can still be far from the truth. An observational regression with
+omitted variables can have a tiny standard error and still estimate the wrong
+object.
+
+\section{Standard Error of a Mean}
+
+In practice, the population standard deviation $\sigma$ is unknown. We estimate
+it with the sample standard deviation
+\[
+  s
+  =
+  \sqrt{
+    \frac{1}{n-1}\sum_{i=1}^n (Y_i-\bar{Y})^2
+  }.
+\]
+Then the estimated standard error of the mean is
+\[
+  \widehat{\se}(\bar{Y})=\frac{s}{\sqrt{n}}.
+\]
+
+The denominator $n-1$ appears because $\bar{Y}$ is estimated from the same data.
+Once the deviations $Y_i-\bar{Y}$ are formed, they must add to zero, so only
+$n-1$ deviations are free to vary independently.
+
+\begin{exmp}[Exam scores]
+Suppose a class has $\bar{Y}=72$, $s=12$, and $n=25$. Then
+\[
+  \widehat{\se}(\bar{Y}) = \frac{12}{\sqrt{25}} = 2.40.
+\]
+A rough 95 percent margin of error is
+\[
+  1.96 \times 2.40 = 4.70.
+\]
+With $n=100$ and the same standard deviation, the standard error is $1.20$ and
+the rough margin is $2.35$.
+\end{exmp}
+
+\section{Treatment-Control Differences}
+
+In a randomized experiment with binary treatment $D_i$, define
+\[
+  \bar{Y}_1 = \frac{1}{n_1}\sum_{D_i=1}Y_i,
+  \qquad
+  \bar{Y}_0 = \frac{1}{n_0}\sum_{D_i=0}Y_i.
+\]
+The difference-in-means estimator is
+\[
+  \widehat{\ATE} = \bar{Y}_1-\bar{Y}_0.
+\]
+Random assignment gives the causal interpretation; the standard error gives
+the precision.
+
+\begin{thmN}[Standard error of a difference in means]
+If treatment and control sample means are independent, then
+\[
+  \Var(\bar{Y}_1-\bar{Y}_0)
+  =
+  \frac{\sigma_1^2}{n_1}
+  +
+  \frac{\sigma_0^2}{n_0}.
+\]
+The usual plug-in standard error is
+\[
+  \widehat{\se}(\bar{Y}_1-\bar{Y}_0)
+  =
+  \sqrt{
+    \frac{s_1^2}{n_1}
+    +
+    \frac{s_0^2}{n_0}
+  }.
+\]
+\end{thmN}
+
+\begin{proof}
+Use
+\[
+  \Var(A-B)=\Var(A)+\Var(B)-2\Cov(A,B).
+\]
+When the two sample means are independent, the covariance term is zero. The
+variance of each group mean is the group variance divided by the group sample
+size. Substitution gives the result.
+\end{proof}
+
+\begin{exmp}[Balanced and unbalanced experiments]
+Suppose $s_1=s_0=12$ and the total sample size is $200$. If $n_1=n_0=100$,
+\[
+  \widehat{\se}
+  =
+  \sqrt{\frac{12^2}{100}+\frac{12^2}{100}}
+  =
+  1.70.
+\]
+If instead $n_1=20$ and $n_0=180$,
+\[
+  \widehat{\se}
+  =
+  \sqrt{\frac{12^2}{20}+\frac{12^2}{180}}
+  =
+  2.83.
+\]
+For equal variances and a fixed total sample size, balanced groups are most
+precise.
+\end{exmp}
+
+\section{The Central Limit Theorem}
+
+The central limit theorem is the reason that normal approximations appear so
+often in applied econometrics.
+
+\begin{thmN}[Central limit theorem, informal]
+If $Y_1,\ldots,Y_n$ are independent draws with mean $\mu$ and finite variance
+$\sigma^2$, then for large $n$,
+\[
+  \frac{\bar{Y}-\mu}{\sigma/\sqrt{n}}
+  \approx
+  \Normal(0,1).
+\]
+\end{thmN}
+
+The CLT does not say that individual outcomes are normal. It says that averages
+are approximately normal in large samples. This is why we can use normal
+critical values for sample means and many regression estimators even when the
+raw data are skewed.
+
+\begin{boxF}
+\textbf{Regularity matters.} The CLT can work poorly with very small samples,
+extreme outliers, heavy tails, strong dependence, or badly behaved sampling
+schemes. The formula is a workhorse, not a license to ignore the data
+generating process.
+\end{boxF}
+
+\section{Confidence Intervals}
+
+For an estimate $\hat{\theta}$ with estimated standard error
+$\widehat{\se}(\hat{\theta})$, the usual large-sample 95 percent confidence
+interval is
+\[
+  \hat{\theta}
+  \pm
+  1.96\,\widehat{\se}(\hat{\theta}).
+\]
+The center is the estimate. The radius is about two standard errors. Wider
+intervals mean less precision.
+
+\begin{exmp}[Tutoring effect]
+Suppose a randomized tutoring program gives
+\[
+  \hat{\tau}=4.0,
+  \qquad
+  \widehat{\se}(\hat{\tau})=1.5.
+\]
+The 95 percent confidence interval is
+\[
+  4.0 \pm 1.96(1.5)
+  =
+  [1.06,6.94].
+\]
+The data are compatible with a modest positive effect and a large positive
+effect. Under the usual 95 percent rule, zero is not in the interval.
+\end{exmp}
+
+\subsection{Where the Formula Comes From}
+
+The CLT gives
+\[
+  Z=
+  \frac{\hat{\theta}-\theta}{\se(\hat{\theta})}
+  \approx \Normal(0,1).
+\]
+For a standard normal variable,
+\[
+  \Prob(-1.96 \leq Z \leq 1.96) \approx 0.95.
+\]
+Substitute the statistic:
+\[
+  \Prob\left(
+    -1.96
+    \leq
+    \frac{\hat{\theta}-\theta}{\se(\hat{\theta})}
+    \leq
+    1.96
+  \right)
+  \approx 0.95.
+\]
+Rearranging the inequalities gives
+\[
+  \Prob\left(
+    \hat{\theta}-1.96\se(\hat{\theta})
+    \leq
+    \theta
+    \leq
+    \hat{\theta}+1.96\se(\hat{\theta})
+  \right)
+  \approx 0.95.
+\]
+In practice we replace the unknown standard error with an estimated standard
+error.
+
+\subsection{What 95 Percent Confidence Means}
+
+Frequentist confidence is about the procedure. If we repeated the study many
+times and computed an interval each time using the same formula, about 95
+percent of those intervals would cover the true parameter.
+
+After seeing one interval, the parameter is fixed. The interval either covers
+it or it does not. Strictly speaking, it is not correct to say that there is a
+95 percent probability that this exact interval contains the true parameter.
+
+\begin{boxD}
+\textbf{Good language.} ``Using a procedure that has about 95 percent
+coverage in repeated samples, we obtain the interval $[1.06,6.94]$.''
+\end{boxD}
+
+\subsection{Do Not Compare Two Separate Intervals}
+
+To test whether treatment and control means differ, use the standard error for
+the difference:
+\[
+  (\bar{Y}_1-\bar{Y}_0)
+  \pm
+  1.96
+  \sqrt{
+    \frac{s_1^2}{n_1}
+    +
+    \frac{s_0^2}{n_0}
+  }.
+\]
+Separate confidence intervals for $\bar{Y}_1$ and $\bar{Y}_0$ answer separate
+questions. Their visual overlap is not the correct test of the treatment
+effect. The uncertainty must be attached to the estimator being interpreted.
+
+\section{Hypothesis Tests}
+
+A hypothesis test starts by assuming a benchmark value is true:
+\[
+  H_0:\theta=\theta_0.
+\]
+Then it asks whether the observed estimate is surprising under that benchmark.
+For a large-sample normal test, the test statistic is
+\[
+  z=
+  \frac{\hat{\theta}-\theta_0}
+       {\widehat{\se}(\hat{\theta})}.
+\]
+The numerator is distance from the null. The denominator is typical sampling
+noise. A value of $z=2$ means that the estimate is about two standard errors
+away from the null.
+
+\begin{boxD}
+\textbf{Two-sided 5 percent rule.} Reject $H_0$ at the 5 percent level if
+$|z|>1.96$.
+\end{boxD}
+
+\begin{exmp}[Testing a tutoring effect]
+Let $\hat{\tau}=4.0$, $\widehat{\se}=1.5$, and test $H_0:\tau=0$. Then
+\[
+  z=\frac{4.0-0}{1.5}=2.67.
+\]
+Since $2.67>1.96$, we reject zero at the 5 percent level in a two-sided test.
+\end{exmp}
+
+Do not confuse rejecting a null with proving a theory. The test is conditional
+on assumptions about sampling, standard errors, and the null. It is one part
+of empirical reasoning, not the whole argument.
+
+\section{P-values}
+
+\begin{defN}[P-value]
+The p-value is the probability, under the null hypothesis, of observing a test
+statistic at least as extreme as the one actually observed.
+\end{defN}
+
+For a two-sided normal test,
+\[
+  p = 2[1-\Phi(|z|)],
+\]
+where $\Phi$ is the standard normal cumulative distribution function.
+
+The most common mistake is to read a p-value as
+\[
+  \Prob(H_0 \mid \text{data}).
+\]
+That is not what it is. A p-value is closer to
+\[
+  \Prob(\text{data as or more extreme} \mid H_0).
+\]
+
+\begin{boxF}
+\textbf{Plain English.} A small p-value says the estimate would be unusual if
+the null were true. It does not say the probability that the null is true.
+\end{boxF}
+
+\subsection{One-Sided and Two-Sided Tests}
+
+A two-sided alternative is
+\[
+  H_1:\theta\neq\theta_0.
+\]
+It rejects for estimates far above or far below the null. A one-sided
+alternative is
+\[
+  H_1:\theta>\theta_0
+  \quad\text{or}\quad
+  H_1:\theta<\theta_0.
+\]
+One-sided tests should be chosen before looking at the data and should be
+justified by the research question. In applied work, two-sided tests are the
+default.
+
+\section{Statistical Significance and Economic Importance}
+
+Statistical significance is not economic importance. With a huge dataset, a
+tiny effect can be statistically significant. With a small dataset, a large
+effect can be statistically imprecise.
+
+\begin{center}
+\begin{tabular}{lcc}
+\toprule
+Result & Estimate & Standard error \\
+\midrule
+Huge dataset & 0.03 & 0.01 \\
+Small study & 4.00 & 2.50 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The first result gives $z=3$, so it is statistically significant at common
+levels, but an effect of $0.03$ may be economically irrelevant. The second
+result gives $z=1.6$, so it is not significant at the 5 percent level, but an
+effect of $4$ units may matter a lot. Applied interpretation must discuss
+magnitude, uncertainty, and design.
+
+\section{Failure to Reject Is Not Evidence of Zero}
+
+Suppose
+\[
+  \hat{\theta}=4.0,
+  \qquad
+  \widehat{\se}=3.0.
+\]
+Testing $H_0:\theta=0$ gives
+\[
+  z=\frac{4.0}{3.0}=1.33.
+\]
+The 95 percent confidence interval is
+\[
+  4.0 \pm 1.96(3.0) = [-1.88,9.88].
+\]
+We cannot reject zero at the 5 percent level. But the interval also contains
+large positive effects. A better interpretation is: the estimate is too
+imprecise to distinguish zero from meaningful positive effects.
+
+\begin{boxF}
+\textbf{Bad sentence.} ``The treatment had no effect because the result is not
+statistically significant.''
+
+\textbf{Better sentence.} ``The study is too imprecise to rule out either zero
+or economically meaningful positive effects.''
+\end{boxF}
+
+\section{Power}
+
+\begin{defN}[Power]
+Power is the probability of rejecting the null hypothesis when a specific
+alternative is true.
+\end{defN}
+
+Power depends on the true effect size, the standard error, the significance
+level, and the form of the test. For a two-sided test of $H_0:\theta=0$, the
+test rejects when
+\[
+  |\hat{\theta}/\se(\hat{\theta})|>1.96.
+\]
+If the true effect is small relative to the standard error, the test will
+reject rarely. If the true effect is large relative to the standard error, the
+test will reject often.
+
+\begin{exmp}[Approximate power logic]
+Suppose the true effect is $\tau=4$ and the standard error is approximately
+$2.4$. Then the estimator is roughly
+\[
+  \hat{\tau}\sim \Normal(4,2.4^2).
+\]
+For a two-sided 5 percent test of zero, rejection requires
+$|\hat{\tau}|>1.96(2.4)=4.70$. Since the true mean of the sampling distribution
+is only $4$, many samples will fail to reject even though the effect is truly
+positive. The study is underpowered.
+\end{exmp}
+
+Low-power studies have two bad features. First, they often miss real effects.
+Second, when they do reject, the significant estimates are often exaggerated in
+magnitude because only unusually large draws cross the significance threshold.
+
+\section{Multiple Testing}
+
+If one test is run at the 5 percent level and the null is true, the probability
+of a false rejection is 5 percent. If many tests are run, the chance of at
+least one false rejection can become large.
+
+If $m$ independent true null hypotheses are tested at level $\alpha$, the
+probability of at least one false positive is
+\[
+  1-(1-\alpha)^m.
+\]
+With $\alpha=0.05$ and $m=20$,
+\[
+  1-0.95^{20}\approx 0.64.
+\]
+Thus, if we search across many outcomes, subgroups, and specifications, some
+small p-values can appear by chance.
+
+\begin{boxD}
+\textbf{Practical discipline.} Pre-specify main outcomes when possible. Report
+the family of results, not only the most impressive one. Label exploratory
+analysis as exploratory. Consider corrections such as Bonferroni, Holm, or
+false-discovery-rate procedures when the research design involves many tests.
+\end{boxD}
+
+\section{Uncertainty and Causal Estimates}
+
+Causal interpretation and statistical precision answer different questions.
+
+\begin{center}
+\begin{tabular}{p{0.36\linewidth}p{0.50\linewidth}}
+\toprule
+Problem & Main question \\
+\midrule
+Identification & Is the estimator centered on the causal estimand? \\
+Inference & How dispersed is the estimator around that center? \\
+Measurement & Are treatment and outcome recorded correctly? \\
+External validity & Does this population answer the policy question? \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+In a randomized experiment,
+\[
+  D_i \independent (Y_{1i},Y_{0i})
+\]
+solves the selection problem in expectation. But the finite-sample difference
+in means still varies across random samples and random assignments:
+\[
+  \hat{\tau}=\bar{Y}_1-\bar{Y}_0.
+\]
+Randomization removes systematic selection bias; it does not remove luck.
+
+In observational designs, the standard error formula must match the sampling
+process and dependence structure. Heteroskedasticity, clustering, serial
+correlation, generated regressors, attrition, and noncompliance can all change
+the appropriate inference method.
+
+\begin{boxF}
+\textbf{Course habit.} Never use the word ``causal'' because a p-value is
+small. Use the word ``causal'' because the identifying variation and
+assumptions justify a causal interpretation.
+\end{boxF}
+
+\section{Using the Python Example}
+
+The script
+\[
+  \texttt{lectures/code/lecture-3-stats-review.py}
+\]
+is a companion to this lecture. From the repository root, run
+\[
+  \texttt{python lectures/code/lecture-3-stats-review.py}
+\]
+or, to save figures,
+\[
+  \texttt{python lectures/code/lecture-3-stats-review.py --save-plots}.
+\]
+
+The script contains two demonstrations.
+\begin{enumerate}
+  \item \textbf{School rankings.} School size has no causal effect in the data
+  generating process, but small schools appear in both tails of observed
+  rankings because their averages have larger standard errors.
+  \item \textbf{Repeated experiments.} The true treatment effect is fixed, but
+  repeated randomized studies produce different estimates. As sample size
+  grows, the sampling distribution tightens around the truth.
+\end{enumerate}
+
+When reading the output, focus on three quantities: the point estimate, the
+standard error, and the confidence interval. Then ask whether the interval is
+narrow enough to answer the substantive question.
+
+\section{How to Read a Results Table}
+
+When reading any empirical results table, do not start with stars. Read in this
+order:
+\begin{enumerate}
+  \item What is the estimand: ATE, ATT, regression slope, reduced form, or
+  something else?
+  \item What identifying assumption gives the estimate causal meaning?
+  \item What are the units and magnitude of the point estimate?
+  \item What is the standard error or confidence interval?
+  \item Is the estimate precise enough to answer the economic question?
+  \item Are there multiple outcomes, subgroups, or specifications that change
+  how we should read the p-values?
+\end{enumerate}
+
+A useful writing template is:
+\begin{quote}
+We estimate that $X$ changes $Y$ by $\hat{\theta}$ units
+$(\widehat{\se}=s)$, with a 95 percent confidence interval of $[L,U]$. The
+identifying variation comes from \ldots. The estimate is economically
+large/small because \ldots. The main threat to causal interpretation is
+\ldots.
+\end{quote}
+
+\section{Worked Problems}
+
+\subsection{Problem 1: Standard Error of a Mean}
+
+A researcher observes $n=64$ workers. Their average weekly hours are
+$\bar{Y}=38$ and the sample standard deviation is $s=8$.
+
+\textbf{Solution.} The estimated standard error is
+\[
+  \widehat{\se}(\bar{Y})=\frac{8}{\sqrt{64}}=1.
+\]
+The approximate 95 percent confidence interval is
+\[
+  38 \pm 1.96(1) = [36.04,39.96].
+\]
+Interpretation: the average is estimated with a margin of about two hours.
+
+\subsection{Problem 2: Difference in Means}
+
+A randomized training program has $n_1=100$ treated workers and $n_0=100$
+control workers. Mean monthly earnings are $\bar{Y}_1=2200$ and
+$\bar{Y}_0=2100$. The sample standard deviations are $s_1=500$ and $s_0=600$.
+
+\textbf{Solution.} The estimated effect is
+\[
+  \hat{\tau}=2200-2100=100.
+\]
+The standard error is
+\[
+  \widehat{\se}(\hat{\tau})
+  =
+  \sqrt{\frac{500^2}{100}+\frac{600^2}{100}}
+  =
+  \sqrt{2500+3600}
+  =
+  78.10.
+\]
+The 95 percent confidence interval is
+\[
+  100 \pm 1.96(78.10)
+  =
+  [-53.08,253.08].
+\]
+This experiment is compatible with a negative effect, zero, and a moderately
+large positive effect. The point estimate is positive, but precision is weak.
+
+\subsection{Problem 3: Hypothesis Test and P-value}
+
+Using Problem 2, test $H_0:\tau=0$ against a two-sided alternative.
+
+\textbf{Solution.} The test statistic is
+\[
+  z=\frac{100}{78.10}=1.28.
+\]
+Since $1.28<1.96$, we do not reject zero at the 5 percent level. The two-sided
+p-value is
+\[
+  p=2[1-\Phi(1.28)]\approx 0.20.
+\]
+This does not prove the effect is zero. It says that an estimate this far from
+zero is not very unusual if the null were true.
+
+\subsection{Problem 4: Multiple Testing}
+
+A paper tests 10 independent outcomes at the 5 percent level, and suppose all
+10 null hypotheses are true. What is the probability of at least one false
+positive?
+
+\textbf{Solution.}
+\[
+  1-(1-0.05)^{10}
+  =
+  1-0.95^{10}
+  \approx
+  0.40.
+\]
+Even with no true effects, there is about a 40 percent chance of at least one
+significant result. This is why selective reporting is dangerous.
+
+\subsection{Problem 5: Causal Meaning Versus Precision}
+
+An observational regression estimates that private tutoring raises scores by
+5 points with standard error 0.5. Should we conclude that tutoring causes
+scores to rise by 5 points?
+
+\textbf{Solution.} Not from precision alone. The estimate is precise: a 95
+percent interval is roughly $[4.02,5.98]$. But causal interpretation requires
+an identifying assumption. Students who receive tutoring may differ in family
+income, motivation, prior preparation, or school quality. The small standard
+error only says the regression coefficient is tightly estimated; it does not
+solve selection bias.
+
+\section{Checklist for Students}
+
+\begin{enumerate}
+  \item Can I state the estimand in words and in notation?
+  \item Can I distinguish the estimator from the estimate?
+  \item Do I know what sampling process makes the estimator random?
+  \item Did I report the standard error in the same units as the estimate?
+  \item Did I compute the confidence interval for the estimator I interpret?
+  \item Did I avoid comparing two separate confidence intervals when the
+  relevant object is a difference?
+  \item Did I interpret a p-value as $\Prob(\text{data as extreme}\mid H_0)$,
+  not as $\Prob(H_0\mid\text{data})$?
+  \item Did I separate statistical significance from economic importance?
+  \item Did I avoid saying ``no effect'' when the result is merely imprecise?
+  \item Did I check whether many outcomes, subgroups, or specifications were
+  searched?
+  \item Did I explain the identifying assumption separately from the standard
+  error?
+\end{enumerate}
+
+\section{Practice Questions}
+
+\begin{enumerate}
+  \item A sample has $n=25$, $\bar{Y}=10$, and $s=5$. Compute the standard
+  error and a 95 percent confidence interval for the mean.
+  \item If the sample size rises from $50$ to $200$ and the individual standard
+  deviation is unchanged, by what factor does the standard error change?
+  \item Explain why small schools may appear more often among both the best and
+  worst schools in a ranking based on average test scores.
+  \item In a randomized experiment, $\bar{Y}_1=84$, $\bar{Y}_0=80$,
+  $s_1=s_0=12$, and $n_1=n_0=36$. Compute the treatment effect estimate,
+  standard error, 95 percent confidence interval, and $z$ statistic for testing
+  zero.
+  \item Why is ``the p-value is 0.03, so there is a 3 percent probability that
+  the null is true'' incorrect?
+  \item Give an example of an estimate that is statistically significant but
+  economically unimportant.
+  \item Give an example of an estimate that is economically important but not
+  statistically significant.
+  \item What is power? Why do small studies often have low power?
+  \item A paper reports 30 subgroup regressions and highlights the two with
+  $p<0.05$. What concern should you raise?
+  \item Explain in two sentences why randomization solves a selection problem
+  but does not eliminate sampling variation.
+\end{enumerate}
+
+\end{document}

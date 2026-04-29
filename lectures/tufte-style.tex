@@ -1,0 +1,151 @@
+% Preamble template for Tufte-style applied econometrics lecture notes.
+% Do not compile this file directly; compile the main notes file instead.
+\documentclass{tufte-handout}
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{ntheorem}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{mathtools}
+\usepackage{hyperref}
+\usepackage{epigraph}
+\usepackage{booktabs}
+\usepackage{array}
+\theoremstyle{break}
+
+\hypersetup{
+  colorlinks,
+  urlcolor = blue,
+  pdfauthor={Swapnil Singh},
+  pdfkeywords={econometrics, causal inference, applied econometrics},
+  pdftitle={Lecture Notes for Applied Econometrics},
+  pdfpagemode=UseNone
+}
+
+\newtheorem{ruleN}{Rule}
+\newtheorem{thmN}{Theorem}
+\newtheorem{assN}{Assumption}
+\newtheorem{defN}{Definition}
+\newtheorem{exmp}{Example}
+\newtheorem{cmt}{Comment}
+\newtheorem{proof}{Proof}
+
+\newcommand{\continuation}{??}
+\newtheorem*{excont}{Example \continuation}
+\newenvironment{continueexample}[1]
+ {\renewcommand{\continuation}{\ref{#1}}\excont[continued]}
+ {\endexcont}
+
+\newcommand{\bY}{\mathbf{Y}}
+\newcommand{\bX}{\mathbf{X}}
+\newcommand{\bD}{\mathbf{D}}
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\Prob}{\mathbb{P}}
+\newcommand{\Var}{\mathrm{Var}}
+\newcommand{\Cov}{\mathrm{Cov}}
+\newcommand{\se}{\mathrm{SE}}
+\newcommand{\CI}{\mathrm{CI}}
+\newcommand{\ATE}{\mathrm{ATE}}
+\newcommand{\ATT}{\mathrm{ATT}}
+\newcommand{\TOT}{\mathrm{TOT}}
+\newcommand{\LATE}{\mathrm{LATE}}
+\newcommand{\ITT}{\mathrm{ITT}}
+\newcommand{\RD}{\mathrm{RD}}
+\newcommand{\DiD}{\mathrm{DiD}}
+\newcommand{\MMSE}{\mathrm{MMSE}}
+\newcommand{\OLS}{\mathrm{OLS}}
+\newcommand{\Normal}{\mathcal{N}}
+\newcommand{\plim}{\operatorname*{plim}}
+\DeclareMathOperator*{\argmin}{arg\,min}
+\DeclareMathOperator{\Supp}{Supp}
+
+\newcommand\independent{\protect\mathpalette{\protect\independenT}{\perp}}
+\def\independenT#1#2{\mathrel{\rlap{$#1#2$}\mkern2mu{#1#2}}}
+\newcommand{\indep}{\perp\!\!\!\perp}
+
+\usepackage{cleveref}
+\crefname{appsec}{appendix}{appendices}
+\crefname{appsubsec}{appendix}{appendices}
+\crefname{assumption}{assumption}{assumptions}
+\crefname{equation}{equation}{equations}
+\crefname{exmp}{example}{examples}
+\crefname{assN}{assumption}{assumptions}
+\crefname{cmt}{comment}{comments}
+\crefname{defN}{definition}{definitions}
+
+\usepackage[nolist]{acronym}
+\begin{acronym}
+  \acro{ATE}{average treatment effect}
+  \acro{ATT}{average treatment effect on the treated}
+  \acro{CIA}{conditional independence assumption}
+  \acro{CI}{confidence interval}
+  \acro{CLT}{central limit theorem}
+  \acro{DiD}{difference-in-differences}
+  \acro{FE}{fixed effects}
+  \acro{FWL}{Frisch-Waugh-Lovell}
+  \acro{IV}{instrumental variables}
+  \acro{LATE}{local average treatment effect}
+  \acro{OLS}{ordinary least squares}
+  \acro{OVB}{omitted-variable bias}
+  \acro{PO}{potential outcomes}
+  \acro{RCT}{randomized controlled trial}
+  \acro{RD}{regression discontinuity}
+  \acro{SUTVA}{stable unit treatment value assignment}
+  \acro{TWFE}{two-way fixed effects}
+\end{acronym}
+
+\def\inprobHIGH{\,{\buildrel p \over \rightarrow}\,}
+\def\inprob{\,{\inprobHIGH}\,}
+\def\indistHIGH{\,{\buildrel d \over \rightarrow}\,}
+\def\indist{\,{\indistHIGH}\,}
+
+\usepackage[many]{tcolorbox}
+\definecolor{main}{HTML}{3F6EA7}
+\definecolor{sub}{HTML}{F2F7FD}
+\definecolor{sub2}{HTML}{FFF5E8}
+\definecolor{mainline}{HTML}{D3DFEE}
+\definecolor{warn}{HTML}{C7771B}
+\definecolor{warnline}{HTML}{EAD9C0}
+
+\tcbset{
+    enhanced,
+    breakable,
+    colback = white,
+    boxrule = 0.5pt,
+    arc = 2pt,
+    left = 9pt,
+    right = 9pt,
+    top = 7pt,
+    bottom = 7pt,
+    before skip = 0.3cm,
+    after skip = 0.45cm
+}
+
+\newtcolorbox{boxD}{
+    colback = sub,
+    colframe = mainline,
+    borderline west = {2.2pt}{0pt}{main},
+    borderline north = {0.6pt}{0pt}{main!25},
+    borderline south = {0.6pt}{0pt}{main!15}
+}
+
+\newtcolorbox{boxF}{
+    colback = sub2,
+    colframe = warnline,
+    borderline west = {2.2pt}{0pt}{warn},
+    borderline north = {0.6pt}{0pt}{warn!25},
+    borderline south = {0.6pt}{0pt}{warn!15}
+}
+
+\usepackage{colortbl}
+\usepackage{tikz}
+\usepackage{verbatim}
+\usetikzlibrary{positioning}
+\usetikzlibrary{snakes}
+\usetikzlibrary{calc}
+\usetikzlibrary{arrows}
+\usetikzlibrary{decorations.markings}
+\usetikzlibrary{shapes.misc}
+\usetikzlibrary{matrix,shapes,arrows,fit,tikzmark}

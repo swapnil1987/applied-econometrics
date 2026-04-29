@@ -1,0 +1,1009 @@
+\documentclass[11pt,aspectratio=169]{beamer}
+\usetheme{SimplePlus}
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath,amssymb,mathtools}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{appendixnumberbeamer}
+\usepackage{hyperref}
+
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\Prob}{\mathbb{P}}
+\newcommand{\Var}{\mathrm{Var}}
+\newcommand{\Cov}{\mathrm{Cov}}
+\newcommand{\se}{\mathrm{SE}}
+\newcommand{\CI}{\mathrm{CI}}
+\newcommand{\ATE}{\mathrm{ATE}}
+\newcommand{\att}{\mathrm{ATT}}
+\newcommand{\Normal}{\mathcal{N}}
+\newcommand{\indep}{\perp\!\!\!\perp}
+\newcommand{\derivbutton}[1]{\vspace{0.4em}\hfill\hyperlink{app:#1}{\beamerbutton{Appendix details}}}
+\newcommand{\backbutton}[1]{\vspace{0.4em}\hfill\hyperlink{main:#1}{\beamerbutton{Back to main slide}}}
+
+\title{Applied Econometrics: Session 3}
+\subtitle{Stats Review: The Most Dangerous Equation}
+\author{PhD Intensive Course}
+\institute{Lecture 3}
+\date{\today}
+
+\begin{document}
+
+\begin{frame}
+  \titlepage
+\end{frame}
+
+\begin{frame}{Why This Lecture Matters}
+  Lectures 1--2 focused on causal meaning: potential outcomes, experiments, selection bias, and regression as a CEF approximation.
+  \vspace{0.4em}
+
+  Today we add the missing statistical layer:
+  \begin{block}{Core question}
+    Once we have an estimate, how much should we trust its numerical value?
+  \end{block}
+
+  \begin{itemize}
+    \item A correct design can still produce a noisy estimate.
+    \item Small samples generate surprisingly extreme averages.
+    \item Standard errors, confidence intervals, tests, and p-values are tools for describing that noise.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Roadmap for Today}
+  \tableofcontents
+\end{frame}
+
+\section{Sampling Variation}
+
+\begin{frame}{The Three Objects Students Must Separate}
+  \begin{center}
+  \begin{tabular}{lll}
+    \toprule
+    Object & Meaning & Example \\
+    \midrule
+    Estimand & Target in the population & \(\ATE=\E[Y_1-Y_0]\) \\
+    Estimator & Rule applied to data & \(\bar{Y}_1-\bar{Y}_0\) \\
+    Estimate & Number from this sample & \(4.2\) test points \\
+    \bottomrule
+  \end{tabular}
+  \end{center}
+  \vspace{0.6em}
+  \begin{block}{Beginner mistake}
+    Treating the estimate as if it were the estimand. The estimate is one noisy draw from a sampling process.
+  \end{block}
+\end{frame}
+
+\begin{frame}{One Sample Is Not the Whole Story}
+  Imagine a population of students with a true average score \(\mu=70\).
+  \begin{itemize}
+    \item Draw one classroom of 25 students: the sample average might be 66.
+    \item Draw another classroom of 25 students: the sample average might be 73.
+    \item Neither classroom average is ``the truth''; each is a noisy estimate.
+  \end{itemize}
+  \vspace{0.3em}
+  \begin{block}{Sampling variation}
+    If we repeated the same sampling procedure many times, the estimate would vary from sample to sample.
+  \end{block}
+\end{frame}
+
+\begin{frame}{The School-Ranking Trap}
+  Suppose we rank schools by average test score.
+  \begin{itemize}
+    \item Some schools have 20 tested students.
+    \item Others have 500 tested students.
+    \item Even if all schools are equally good, the small schools will have much noisier averages.
+  \end{itemize}
+  \vspace{0.3em}
+  \begin{block}{Policy danger}
+    The schools at the top of the ranking may look special partly because they had few students and a lucky draw.
+  \end{block}
+\end{frame}
+
+\begin{frame}{Look at Both Tails}
+  The mistake is clearer when we inspect both ends of the ranking.
+  \begin{itemize}
+    \item Small schools are overrepresented among the top performers.
+    \item But small schools are also overrepresented among the bottom performers.
+    \item This is a variance pattern, not evidence that small schools are automatically better or worse.
+  \end{itemize}
+  \vspace{0.3em}
+  \begin{block}{Diagnostic}
+    When a small group appears often among the winners, check whether it also appears often among the losers.
+  \end{block}
+\end{frame}
+
+\begin{frame}{The Most Dangerous Equation}
+  \hypertarget{main:dangerous-equation}{}
+  For a sample mean,
+  \[
+    \se(\bar{Y})=\frac{\sigma}{\sqrt{n}}.
+  \]
+  \begin{itemize}
+    \item \(\sigma\): individual-level standard deviation.
+    \item \(n\): number of observations used in the average.
+    \item \(\se(\bar{Y})\): standard deviation of the estimate across repeated samples.
+  \end{itemize}
+  \begin{block}{Translation}
+    More data makes averages more stable, but precision improves with \(\sqrt{n}\), not with \(n\).
+  \end{block}
+  \derivbutton{mean-variance}
+\end{frame}
+
+\begin{frame}{Why Precision Improves Slowly}
+  If individual scores have \(\sigma=12\):
+  \begin{center}
+  \begin{tabular}{rcc}
+    \toprule
+    Sample size \(n\) & \(\se(\bar{Y})=12/\sqrt{n}\) & Interpretation \\
+    \midrule
+    25 & 2.40 & very noisy average \\
+    100 & 1.20 & half as noisy \\
+    400 & 0.60 & half again \\
+    1600 & 0.30 & half again \\
+    \bottomrule
+  \end{tabular}
+  \end{center}
+  \vspace{0.4em}
+  \textbf{Rule:} to cut the standard error in half, you need four times as many observations.
+\end{frame}
+
+\begin{frame}{Standard Deviation vs Standard Error}
+  \begin{center}
+  \begin{tabular}{p{0.42\linewidth}p{0.42\linewidth}}
+    \toprule
+    Standard deviation & Standard error \\
+    \midrule
+    Spread of individual outcomes & Spread of the estimator \\
+    Describes students, workers, firms & Describes \(\bar{Y}\), \(\hat{\beta}\), \(\widehat{\ATE}\) \\
+    Usually does not vanish with \(n\) & Shrinks as sample size grows \\
+    Answers: how different are units? & Answers: how precise is the estimate? \\
+    \bottomrule
+  \end{tabular}
+  \end{center}
+  \vspace{0.4em}
+  \begin{block}{Practical warning}
+    A dataset can have very dispersed outcomes and still estimate the mean precisely if \(n\) is large.
+  \end{block}
+\end{frame}
+
+\begin{frame}{Estimators Are Random Variables}
+  \hypertarget{main:estimator-rv}{}
+  Before seeing data, \(\bar{Y}\) is random because the sample is random.
+  \[
+    \bar{Y}
+    =
+    \frac{1}{n}\sum_{i=1}^n Y_i.
+  \]
+  \begin{itemize}
+    \item Different samples produce different values of \(\bar{Y}\).
+    \item The sampling distribution describes those possible values.
+    \item The standard error is the standard deviation of that sampling distribution.
+  \end{itemize}
+  \begin{block}{Mental model}
+    Think of the estimate in your paper as one point from a cloud of estimates that could have happened.
+  \end{block}
+  \derivbutton{sampling-distribution}
+\end{frame}
+
+\begin{frame}{Bias and Variance Are Different Problems}
+  \[
+    \text{Estimation error}
+    =
+    \underbrace{\E[\hat{\theta}]-\theta}_{\text{bias}}
+    +
+    \underbrace{\hat{\theta}-\E[\hat{\theta}]}_{\text{sampling noise}}.
+  \]
+  \begin{itemize}
+    \item Design assumptions target bias: selection, omitted variables, bad controls.
+    \item Standard errors target sampling noise: how much \(\hat{\theta}\) moves across samples.
+    \item A tiny standard error does not make a biased comparison causal.
+    \item A randomized experiment can be unbiased but still imprecise.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Python Demonstration for This Lecture}
+  The file
+  \[
+    \texttt{lectures/code/lecture-3-stats-review.py}
+  \]
+  simulates two examples:
+  \begin{itemize}
+    \item school rankings where small schools appear in both tails because their averages are noisy;
+    \item randomized treatment-control studies where the true treatment effect is fixed but estimates vary across samples.
+  \end{itemize}
+  \vspace{0.3em}
+  Run:
+  \[
+    \texttt{python lectures/code/lecture-3-stats-review.py}
+  \]
+  Optional plot export:
+  \[
+    \texttt{python lectures/code/lecture-3-stats-review.py --save-plots}
+  \]
+\end{frame}
+
+\section{Standard Errors}
+
+\begin{frame}{The Standard Error of a Mean}
+  \hypertarget{main:se-mean}{}
+  In practice \(\sigma\) is unknown, so we estimate it with the sample standard deviation:
+  \[
+    s
+    =
+    \sqrt{\frac{1}{n-1}\sum_{i=1}^n (Y_i-\bar{Y})^2}.
+  \]
+  Then
+  \[
+    \widehat{\se}(\bar{Y})
+    =
+    \frac{s}{\sqrt{n}}.
+  \]
+  \begin{itemize}
+    \item Large \(s\): outcomes are noisy, so the average is harder to estimate.
+    \item Large \(n\): averaging cancels out more individual noise.
+  \end{itemize}
+  \derivbutton{sample-se}
+\end{frame}
+
+\begin{frame}{A Small Numerical Example}
+  Suppose average exam score in one class is \(\bar{Y}=72\), and \(s=12\).
+  \begin{center}
+  \begin{tabular}{rcc}
+    \toprule
+    Number of students & \(\widehat{\se}(\bar{Y})\) & Rough 95\% margin \\
+    \midrule
+    25 & \(12/\sqrt{25}=2.40\) & \(1.96\times 2.40=4.70\) \\
+    100 & \(12/\sqrt{100}=1.20\) & \(1.96\times 1.20=2.35\) \\
+    400 & \(12/\sqrt{400}=0.60\) & \(1.96\times 0.60=1.18\) \\
+    \bottomrule
+  \end{tabular}
+  \end{center}
+  \vspace{0.4em}
+  Same mean, same individual dispersion, very different precision.
+\end{frame}
+
+\begin{frame}{Treatment-Control Difference in Means}
+  \hypertarget{main:ate-estimator}{}
+  In a randomized experiment with binary treatment \(D_i\):
+  \[
+    \widehat{\ATE}
+    =
+    \bar{Y}_1-\bar{Y}_0,
+  \]
+  where
+  \[
+    \bar{Y}_1=\frac{1}{n_1}\sum_{D_i=1}Y_i,
+    \qquad
+    \bar{Y}_0=\frac{1}{n_0}\sum_{D_i=0}Y_i.
+  \]
+  \begin{itemize}
+    \item Randomization gives the causal interpretation.
+    \item The standard error tells us how noisy this causal estimate is.
+  \end{itemize}
+  \derivbutton{two-sample-se}
+\end{frame}
+
+\begin{frame}{Standard Error of a Difference}
+  \hypertarget{main:ate-se}{}
+  If treatment and control samples are independent,
+  \[
+    \widehat{\se}(\bar{Y}_1-\bar{Y}_0)
+    =
+    \sqrt{\frac{s_1^2}{n_1}+\frac{s_0^2}{n_0}}.
+  \]
+  \begin{itemize}
+    \item Each group mean is noisy.
+    \item The variance of the difference adds the two group variances.
+    \item The noisier or smaller group can dominate the uncertainty.
+  \end{itemize}
+  \begin{block}{Causal translation}
+    Even with random assignment, the estimated effect can look too large, too small, or even have the wrong sign in a small sample.
+  \end{block}
+  \derivbutton{two-sample-se}
+\end{frame}
+
+\begin{frame}{Unequal Group Sizes Waste Precision}
+  Suppose \(s_1=s_0=12\) and total sample size is \(200\).
+  \begin{center}
+  \begin{tabular}{rcc}
+    \toprule
+    \(n_1\) treated & \(n_0\) control & \(\widehat{\se}(\bar{Y}_1-\bar{Y}_0)\) \\
+    \midrule
+    100 & 100 & 1.70 \\
+    50 & 150 & 1.96 \\
+    20 & 180 & 2.83 \\
+    \bottomrule
+  \end{tabular}
+  \end{center}
+  \vspace{0.3em}
+  \begin{block}{Design lesson}
+    For a fixed total sample and equal variances, balanced treatment-control groups are most precise.
+  \end{block}
+\end{frame}
+
+\begin{frame}{What Standard Errors Do Not Do}
+  Standard errors are essential, but they are not magic.
+  \begin{itemize}
+    \item They do not remove selection bias.
+    \item They do not validate a bad control strategy.
+    \item They do not prove the outcome was measured correctly.
+    \item They do not solve spillovers, attrition, or noncompliance.
+  \end{itemize}
+  \begin{block}{Good applied work needs both}
+    Identification answers: is the estimate centered on the causal target? Inference answers: how uncertain is the estimate around its center?
+  \end{block}
+\end{frame}
+
+\section{Confidence Intervals}
+
+\begin{frame}{The CLT as the Workhorse}
+  \hypertarget{main:clt}{}
+  Under common regularity conditions,
+  \[
+    \frac{\bar{Y}-\mu}{\se(\bar{Y})}
+    \approx
+    \Normal(0,1).
+  \]
+  \begin{itemize}
+    \item The sample mean is approximately normal in large samples.
+    \item The approximation often works better for averages than for individual data.
+    \item We use this to translate standard errors into intervals and tests.
+  \end{itemize}
+  \derivbutton{clt-ci}
+\end{frame}
+
+\begin{frame}{A 95\% Confidence Interval}
+  \hypertarget{main:ci-formula}{}
+  For an estimate \(\hat{\theta}\),
+  \[
+    \hat{\theta}
+    \pm
+    1.96\,\widehat{\se}(\hat{\theta})
+  \]
+  is the usual large-sample 95\% confidence interval.
+  \begin{itemize}
+    \item Center: the estimate from this sample.
+    \item Radius: about two standard errors.
+    \item Wider interval: less precise estimate.
+    \item Narrower interval: more precise estimate.
+  \end{itemize}
+  \derivbutton{clt-ci}
+\end{frame}
+
+\begin{frame}{Treatment Effect Interval: Example}
+  Suppose a randomized tutoring program produces:
+  \[
+    \bar{Y}_1-\bar{Y}_0=4.0,
+    \qquad
+    \widehat{\se}=1.5.
+  \]
+  Then
+  \[
+    95\%~\CI
+    =
+    4.0\pm 1.96(1.5)
+    =
+    [1.06,\;6.94].
+  \]
+  \begin{block}{Substantive reading}
+    The data are compatible with a modest positive effect and a large positive effect, but not with exactly zero under the usual 95\% rule.
+  \end{block}
+\end{frame}
+
+\begin{frame}{What Does 95\% Confidence Mean?}
+  \hypertarget{main:ci-interpretation}{}
+  Frequentist confidence is about the procedure, not about a fixed interval.
+  \begin{itemize}
+    \item Imagine repeating the study many times.
+    \item Each time, compute \(\hat{\theta}\pm1.96\,\widehat{\se}\).
+    \item About 95\% of those intervals would cover the true parameter.
+  \end{itemize}
+  \begin{block}{Careful language}
+    After seeing one interval, the true parameter is fixed. The interval either covers it or it does not.
+  \end{block}
+  \derivbutton{clt-ci}
+\end{frame}
+
+\begin{frame}{Common Confidence-Interval Mistakes}
+  \begin{itemize}
+    \item Wrong: ``There is a 95\% probability that this exact interval contains the true parameter.''
+    \item Better: ``This method covers the true parameter in about 95\% of repeated samples.''
+    \item Wrong: ``All values inside the interval are equally plausible.''
+    \item Better: ``Values near the estimate are usually more compatible with the data than values near the edge.''
+    \item Wrong: ``A wide interval means the design is not causal.''
+    \item Better: ``A wide interval means the estimate is imprecise.''
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Do Not Compare Two Separate CIs}
+  \hypertarget{main:overlap}{}
+  To test whether treatment and control means differ, use the CI for the difference:
+  \[
+    (\bar{Y}_1-\bar{Y}_0)
+    \pm
+    1.96
+    \sqrt{\frac{s_1^2}{n_1}+\frac{s_0^2}{n_0}}.
+  \]
+  \begin{itemize}
+    \item Separate CIs for \(\bar{Y}_1\) and \(\bar{Y}_0\) answer separate questions.
+    \item Overlap of those separate CIs is not the right test for the treatment effect.
+    \item The correct uncertainty is attached to the estimator you report.
+  \end{itemize}
+  \derivbutton{overlap-diff}
+\end{frame}
+
+\begin{frame}{Interval Width Is Information}
+  Compare two estimates of the same causal effect:
+  \begin{center}
+  \begin{tabular}{lcc}
+    \toprule
+    Study & Estimate & 95\% CI \\
+    \midrule
+    Small pilot & 5.0 & \([-3.0,\;13.0]\) \\
+    Large RCT & 5.0 & \([3.5,\;6.5]\) \\
+    \bottomrule
+  \end{tabular}
+  \end{center}
+  \vspace{0.4em}
+  Same point estimate, very different evidence.
+  \begin{itemize}
+    \item The pilot is compatible with harm, no effect, or large benefit.
+    \item The large RCT pins down a positive effect much more tightly.
+  \end{itemize}
+\end{frame}
+
+\section{Hypothesis Tests and P-values}
+
+\begin{frame}{Hypothesis Testing: The Logic}
+  \hypertarget{main:hyp-test}{}
+  A hypothesis test begins by assuming a benchmark is true.
+  \[
+    H_0:\theta=\theta_0.
+  \]
+  Then ask:
+  \begin{block}{Testing question}
+    If \(H_0\) were true, would an estimate this far from \(\theta_0\) be surprising?
+  \end{block}
+  \begin{itemize}
+    \item If very surprising, reject \(H_0\).
+    \item If not very surprising, do not reject \(H_0\).
+    \item ``Do not reject'' is not the same as ``prove true.''
+  \end{itemize}
+  \derivbutton{z-test}
+\end{frame}
+
+\begin{frame}{The Test Statistic}
+  \hypertarget{main:z-stat}{}
+  For a large-sample normal test,
+  \[
+    z
+    =
+    \frac{\hat{\theta}-\theta_0}
+         {\widehat{\se}(\hat{\theta})}.
+  \]
+  \begin{itemize}
+    \item Numerator: distance from the null value.
+    \item Denominator: typical sampling noise.
+    \item A large absolute \(z\) means the estimate is far from the null relative to its noise.
+  \end{itemize}
+  \begin{block}{95\% two-sided rule}
+    Reject \(H_0\) at the 5\% level if \(|z|>1.96\).
+  \end{block}
+  \derivbutton{z-test}
+\end{frame}
+
+\begin{frame}{P-values}
+  \hypertarget{main:pvalue}{}
+  The p-value is:
+  \[
+    \Prob(\text{test statistic at least this extreme}\mid H_0).
+  \]
+  For a two-sided normal test:
+  \[
+    p
+    =
+    2\left[1-\Phi\left(|z|\right)\right].
+  \]
+  \begin{itemize}
+    \item Small p-value: this estimate would be unusual if \(H_0\) were true.
+    \item Large p-value: this estimate is not unusual under \(H_0\).
+  \end{itemize}
+  \derivbutton{pvalue-calc}
+\end{frame}
+
+\begin{frame}{The Most Common P-value Mistake}
+  A p-value is not
+  \[
+    \Prob(H_0\mid \text{data}).
+  \]
+  It is closer to
+  \[
+    \Prob(\text{data as or more extreme}\mid H_0).
+  \]
+  \begin{block}{Plain English}
+    A p-value asks how surprising the estimate is under the null. It does not tell us the probability that the null is true.
+  \end{block}
+\end{frame}
+
+\begin{frame}{One-sided and Two-sided Tests}
+  \begin{itemize}
+    \item Two-sided alternative:
+    \[
+      H_1:\theta\neq\theta_0.
+    \]
+    Reject for estimates far above or far below the null.
+    \item One-sided alternative:
+    \[
+      H_1:\theta>\theta_0
+      \quad\text{or}\quad
+      H_1:\theta<\theta_0.
+    \]
+    Reject only in the pre-specified direction.
+  \end{itemize}
+  \begin{block}{Applied convention}
+    Use two-sided tests unless the one-sided direction was justified before seeing the data.
+  \end{block}
+\end{frame}
+
+\begin{frame}{Statistical Significance Is Not Economic Importance}
+  \begin{center}
+  \begin{tabular}{lcc}
+    \toprule
+    Result & Estimate & Standard error \\
+    \midrule
+    Huge dataset & 0.03 & 0.01 \\
+    Small study & 4.00 & 2.50 \\
+    \bottomrule
+  \end{tabular}
+  \end{center}
+  \vspace{0.4em}
+  \begin{itemize}
+    \item The first effect may be statistically significant but economically tiny.
+    \item The second effect may be substantively large but statistically imprecise.
+    \item Applied interpretation must discuss magnitude, uncertainty, and design.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Failure to Reject Is Not Evidence of Zero}
+  Suppose \(\hat{\theta}=4.0\) and \(\widehat{\se}=3.0\).
+  \[
+    z=\frac{4.0}{3.0}=1.33,
+    \qquad
+    95\%~\CI=[-1.88,\;9.88].
+  \]
+  \begin{itemize}
+    \item We cannot reject zero at the 5\% level.
+    \item But the interval also contains effects large enough to matter.
+    \item The study may simply be underpowered.
+  \end{itemize}
+  \begin{block}{Better sentence}
+    ``The estimate is too imprecise to distinguish zero from meaningful positive effects.''
+  \end{block}
+\end{frame}
+
+\begin{frame}{Power: Why Small Studies Miss Effects}
+  Power is the probability of rejecting \(H_0\) when a particular alternative is true.
+  \begin{itemize}
+    \item Small \(n\) gives large standard errors.
+    \item Large standard errors make \(z=(\hat{\theta}-\theta_0)/\widehat{\se}\) smaller in absolute value.
+    \item Low-power studies often produce unstable estimates and inconsistent conclusions.
+  \end{itemize}
+  \begin{block}{Applied implication}
+    A noisy null result is not strong evidence that the causal effect is zero.
+  \end{block}
+\end{frame}
+
+\begin{frame}{Multiple Testing and Specification Search}
+  If you test many outcomes, subgroups, or specifications:
+  \begin{itemize}
+    \item some small p-values can arise by chance;
+    \item the most impressive estimate is often selected after looking at many estimates;
+    \item standard errors for one chosen regression do not account for all the searching.
+  \end{itemize}
+  \begin{block}{Practical discipline}
+    Pre-specify main outcomes when possible, report the full family of results, and be honest about exploratory analyses.
+  \end{block}
+\end{frame}
+
+\section{Uncertainty and Causal Estimates}
+
+\begin{frame}{Design Credibility vs Statistical Precision}
+  \begin{center}
+  \begin{tabular}{p{0.38\linewidth}p{0.45\linewidth}}
+    \toprule
+    Problem & Main question \\
+    \midrule
+    Identification & Is the estimator centered on the causal estimand? \\
+    Inference & How dispersed is the estimator around that center? \\
+    Measurement & Is the outcome/treatment recorded correctly? \\
+    External validity & Does this population answer the policy question? \\
+    \bottomrule
+  \end{tabular}
+  \end{center}
+  \vspace{0.4em}
+  \begin{block}{Course habit}
+    Never use the word ``causal'' just because a p-value is small.
+  \end{block}
+\end{frame}
+
+\begin{frame}{Randomization Removes Selection, Not Luck}
+  \hypertarget{main:randomization-noise}{}
+  In an RCT:
+  \[
+    D_i\indep(Y_{1i},Y_{0i})
+  \]
+  gives unbiased comparison of treatment and control groups.
+  \vspace{0.3em}
+
+  But in a finite sample:
+  \[
+    \bar{Y}_1-\bar{Y}_0
+  \]
+  still varies across random assignments and random samples.
+  \begin{block}{Lesson}
+    Randomization solves the identification problem in expectation. Standard errors describe the remaining finite-sample uncertainty.
+  \end{block}
+  \derivbutton{randomization-variance}
+\end{frame}
+
+\begin{frame}{Observational Causal Designs Need More Care}
+  In observational studies, uncertainty often has additional structure:
+  \begin{itemize}
+    \item heteroskedasticity: outcome variance differs across units;
+    \item clustering: units in the same school, firm, village, or year share shocks;
+    \item serial correlation: repeated observations over time are not independent;
+    \item generated regressors: first-stage estimates add uncertainty.
+  \end{itemize}
+  \begin{block}{Practical rule}
+    The standard error formula must match the design and sampling process.
+  \end{block}
+\end{frame}
+
+\begin{frame}{What to Report in Applied Work}
+  For every main causal estimate, report:
+  \begin{itemize}
+    \item point estimate and units;
+    \item standard error;
+    \item confidence interval;
+    \item sample size and group sizes;
+    \item p-value if testing is relevant;
+    \item the identifying assumption that gives the estimate causal meaning.
+  \end{itemize}
+  \begin{block}{Minimum standard}
+    An effect estimate without uncertainty is not yet an empirical result.
+  \end{block}
+\end{frame}
+
+\begin{frame}{Reading a Results Table}
+  When you see a table, read it in this order:
+  \begin{enumerate}
+    \item What is the estimand? ATE, ATT, regression slope, reduced form?
+    \item What design or assumption identifies it?
+    \item What is the sign and magnitude?
+    \item What is the standard error or confidence interval?
+    \item Is the estimate precise enough to answer the economic question?
+  \end{enumerate}
+  \vspace{0.3em}
+  Stars are last, not first.
+\end{frame}
+
+\begin{frame}{A Useful Writing Template}
+  \begin{block}{Template}
+    We estimate that \(X\) increases/decreases \(Y\) by \(\hat{\theta}\) units
+    \((\widehat{\se}=s)\), with a 95\% confidence interval of
+    \([L,U]\). The identifying variation comes from \(\ldots\).
+  \end{block}
+  \vspace{0.4em}
+  Then interpret:
+  \begin{itemize}
+    \item Is \(\hat{\theta}\) economically large?
+    \item Does \([L,U]\) rule out policy-relevant alternatives?
+    \item What assumption would move the estimate away from the causal target?
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Lecture Takeaways}
+  \begin{enumerate}
+    \item Small samples naturally create extreme estimates.
+    \item The standard error of a mean is \(\sigma/\sqrt{n}\).
+    \item Confidence intervals describe uncertainty around an estimate.
+    \item Hypothesis tests ask whether data are surprising under a null.
+    \item P-values are \(P(\text{data as extreme}\mid H_0)\), not \(P(H_0\mid\text{data})\).
+    \item Causal interpretation requires identification; statistical precision is a separate requirement.
+  \end{enumerate}
+\end{frame}
+
+\begin{frame}{Sources and Further Reading}
+  \begin{itemize}
+    \item Matheus Facure Alves, \emph{Causal Inference for the Brave and True}, Chapter 03:
+    \href{https://matheusfacure.github.io/python-causality-handbook/03-Stats-Review-The-Most-Dangerous-Equation.html}{Stats Review: The Most Dangerous Equation}.
+    \item Howard Wainer (2007), ``The Most Dangerous Equation,'' \emph{American Scientist}, 95(3), 249--256.
+    \item Angrist and Pischke, \emph{Mostly Harmless Econometrics}, review of experiments and standard errors.
+    \item Angrist and Pischke, \emph{Mastering 'Metrics}, discussion of experiments and regression evidence.
+  \end{itemize}
+  \vspace{0.3em}
+  These slides paraphrase and extend the chapter for this course; the examples use self-contained simulations.
+\end{frame}
+
+\appendix
+
+\begin{frame}{Appendix Map}
+  \begin{itemize}
+    \item \hyperlink{app:mean-variance}{\beamerbutton{A1: Variance of the sample mean}}
+    \item \hyperlink{app:sampling-distribution}{\beamerbutton{A2: Sampling distributions}}
+    \item \hyperlink{app:sample-se}{\beamerbutton{A3: Sample standard deviation and plug-in SE}}
+    \item \hyperlink{app:clt-ci}{\beamerbutton{A4: CLT and confidence intervals}}
+    \item \hyperlink{app:two-sample-se}{\beamerbutton{A5: Two-sample standard error}}
+    \item \hyperlink{app:z-test}{\beamerbutton{A6: Hypothesis tests}}
+    \item \hyperlink{app:pvalue-calc}{\beamerbutton{A7: P-value calculation}}
+    \item \hyperlink{app:overlap-diff}{\beamerbutton{A8: Why overlapping CIs are not the test}}
+    \item \hyperlink{app:randomization-variance}{\beamerbutton{A9: Randomization variance}}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Appendix A1: Variance of the Sample Mean}
+  \hypertarget{app:mean-variance}{}
+  Let \(Y_1,\ldots,Y_n\) be independent draws with
+  \[
+    \E[Y_i]=\mu,
+    \qquad
+    \Var(Y_i)=\sigma^2.
+  \]
+  The sample mean is
+  \[
+    \bar{Y}=\frac{1}{n}\sum_{i=1}^n Y_i.
+  \]
+  Then
+  \[
+    \Var(\bar{Y})
+    =
+    \Var\left(\frac{1}{n}\sum_{i=1}^n Y_i\right)
+    =
+    \frac{1}{n^2}\sum_{i=1}^n \Var(Y_i)
+    =
+    \frac{\sigma^2}{n}.
+  \]
+  Therefore
+  \[
+    \se(\bar{Y})=\sqrt{\Var(\bar{Y})}=\frac{\sigma}{\sqrt{n}}.
+  \]
+  \backbutton{dangerous-equation}
+\end{frame}
+
+\begin{frame}{Appendix A2: Sampling Distributions}
+  \hypertarget{app:sampling-distribution}{}
+  The population distribution describes individual \(Y_i\).
+  The sampling distribution describes an estimator such as \(\bar{Y}\).
+  \vspace{0.3em}
+
+  If
+  \[
+    Y_i \sim \Normal(\mu,\sigma^2),
+  \]
+  then exactly
+  \[
+    \bar{Y}
+    \sim
+    \Normal\left(\mu,\frac{\sigma^2}{n}\right).
+  \]
+  For non-normal \(Y_i\), the central limit theorem gives the approximation
+  \[
+    \bar{Y}
+    \approx
+    \Normal\left(\mu,\frac{\sigma^2}{n}\right)
+  \]
+  in large samples.
+  \backbutton{estimator-rv}
+\end{frame}
+
+\begin{frame}{Appendix A3: Sample Standard Deviation and Plug-in SE}
+  \hypertarget{app:sample-se}{}
+  The unknown population variance is
+  \[
+    \sigma^2=\E[(Y_i-\mu)^2].
+  \]
+  In data, replace \(\mu\) with \(\bar{Y}\):
+  \[
+    s^2
+    =
+    \frac{1}{n-1}\sum_{i=1}^n (Y_i-\bar{Y})^2.
+  \]
+  The denominator is \(n-1\), not \(n\), because estimating \(\bar{Y}\) consumes one degree of freedom.
+  \vspace{0.3em}
+
+  Plug this into de Moivre's formula:
+  \[
+    \widehat{\se}(\bar{Y})
+    =
+    \sqrt{\frac{s^2}{n}}
+    =
+    \frac{s}{\sqrt{n}}.
+  \]
+  \backbutton{se-mean}
+\end{frame}
+
+\begin{frame}{Appendix A4: CLT and Confidence Intervals}
+  \hypertarget{app:clt-ci}{}
+  The CLT implies
+  \[
+    Z
+    =
+    \frac{\bar{Y}-\mu}{\se(\bar{Y})}
+    \approx
+    \Normal(0,1).
+  \]
+  For a standard normal variable,
+  \[
+    \Prob(-1.96\leq Z\leq 1.96)\approx 0.95.
+  \]
+  Substitute \(Z\):
+  \[
+    \Prob\left(
+      -1.96
+      \leq
+      \frac{\bar{Y}-\mu}{\se(\bar{Y})}
+      \leq
+      1.96
+    \right)
+    \approx 0.95.
+  \]
+  Rearranging gives
+  \[
+    \Prob\left(
+      \bar{Y}-1.96\,\se(\bar{Y})
+      \leq
+      \mu
+      \leq
+      \bar{Y}+1.96\,\se(\bar{Y})
+    \right)
+    \approx 0.95.
+  \]
+  \backbutton{ci-formula}
+\end{frame}
+
+\begin{frame}{Appendix A5: Two-Sample Standard Error}
+  \hypertarget{app:two-sample-se}{}
+  Let treatment and control sample means be independent:
+  \[
+    \bar{Y}_1=\frac{1}{n_1}\sum_{D_i=1}Y_i,
+    \qquad
+    \bar{Y}_0=\frac{1}{n_0}\sum_{D_i=0}Y_i.
+  \]
+  The estimator is
+  \[
+    \hat{\tau}=\bar{Y}_1-\bar{Y}_0.
+  \]
+  Using \(\Var(A-B)=\Var(A)+\Var(B)-2\Cov(A,B)\):
+  \[
+    \Var(\hat{\tau})
+    =
+    \Var(\bar{Y}_1)+\Var(\bar{Y}_0)
+    =
+    \frac{\sigma_1^2}{n_1}+\frac{\sigma_0^2}{n_0},
+  \]
+  where independence makes the covariance term zero. Estimate with
+  \[
+    \widehat{\se}(\hat{\tau})
+    =
+    \sqrt{\frac{s_1^2}{n_1}+\frac{s_0^2}{n_0}}.
+  \]
+  \backbutton{ate-se}
+\end{frame}
+
+\begin{frame}{Appendix A6: Hypothesis Tests}
+  \hypertarget{app:z-test}{}
+  To test
+  \[
+    H_0:\theta=\theta_0,
+  \]
+  start from the approximate distribution
+  \[
+    \hat{\theta}
+    \approx
+    \Normal\left(\theta,\se(\hat{\theta})^2\right).
+  \]
+  Under the null,
+  \[
+    \frac{\hat{\theta}-\theta_0}{\se(\hat{\theta})}
+    \approx
+    \Normal(0,1).
+  \]
+  Replacing the unknown standard error with its estimate gives
+  \[
+    z
+    =
+    \frac{\hat{\theta}-\theta_0}{\widehat{\se}(\hat{\theta})}.
+  \]
+  For a two-sided 5\% test, reject when \(|z|>1.96\).
+  \backbutton{z-stat}
+\end{frame}
+
+\begin{frame}{Appendix A7: P-value Calculation}
+  \hypertarget{app:pvalue-calc}{}
+  Let \(Z\sim\Normal(0,1)\), and suppose the observed test statistic is \(z_{\text{obs}}\).
+  \vspace{0.3em}
+
+  For a two-sided test,
+  \[
+    p
+    =
+    \Prob(|Z|\geq |z_{\text{obs}}|)
+    =
+    2\Prob(Z\geq |z_{\text{obs}}|)
+    =
+    2\left[1-\Phi(|z_{\text{obs}}|)\right].
+  \]
+  Example:
+  \[
+    z_{\text{obs}}=2.3
+    \quad\Rightarrow\quad
+    p=2[1-\Phi(2.3)]\approx 0.021.
+  \]
+  This is small because values beyond \(\pm 2.3\) are rare under a standard normal null distribution.
+  \backbutton{pvalue}
+\end{frame}
+
+\begin{frame}{Appendix A8: Why Overlapping CIs Are Not the Test}
+  \hypertarget{app:overlap-diff}{}
+  Suppose two independent means have estimates \(\bar{Y}_1,\bar{Y}_0\) and standard errors \(\se_1,\se_0\).
+  Separate 95\% intervals are
+  \[
+    \bar{Y}_1\pm 1.96\se_1,
+    \qquad
+    \bar{Y}_0\pm 1.96\se_0.
+  \]
+  But the treatment effect is
+  \[
+    \hat{\tau}=\bar{Y}_1-\bar{Y}_0,
+  \]
+  whose standard error is
+  \[
+    \se(\hat{\tau})
+    =
+    \sqrt{\se_1^2+\se_0^2}.
+  \]
+  The correct 95\% interval is
+  \[
+    \hat{\tau}
+    \pm
+    1.96\sqrt{\se_1^2+\se_0^2}.
+  \]
+  This object can exclude zero even when the two separate mean intervals overlap.
+  \backbutton{overlap}
+\end{frame}
+
+\begin{frame}{Appendix A9: Randomization Variance}
+  \hypertarget{app:randomization-variance}{}
+  With potential outcomes
+  \[
+    Y_i=D_iY_{1i}+(1-D_i)Y_{0i},
+  \]
+  the difference in means is
+  \[
+    \hat{\tau}
+    =
+    \bar{Y}_{1,\text{treated}}
+    -
+    \bar{Y}_{0,\text{control}}.
+  \]
+  Under random assignment, treatment status is independent of potential outcomes, so
+  \[
+    \E[\hat{\tau}]=\E[Y_{1i}-Y_{0i}]
+  \]
+  for the relevant experimental population.
+  \vspace{0.3em}
+
+  But the realized treated and control groups are finite random partitions, so
+  \[
+    \Var(\hat{\tau})
+    \approx
+    \frac{\sigma_1^2}{n_1}
+    +
+    \frac{\sigma_0^2}{n_0}.
+  \]
+  Randomization centers the estimator correctly; it does not make the variance zero.
+  \backbutton{randomization-noise}
+\end{frame}
+
+\end{document}

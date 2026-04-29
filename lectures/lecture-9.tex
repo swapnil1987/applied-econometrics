@@ -1,0 +1,829 @@
+\documentclass[11pt,aspectratio=169]{beamer}
+\usetheme{SimplePlus}
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath,amssymb,mathtools}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{appendixnumberbeamer}
+\usepackage{hyperref}
+
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\Var}{\mathrm{Var}}
+\newcommand{\Cov}{\mathrm{Cov}}
+\newcommand{\Prob}{\mathbb{P}}
+\newcommand{\ATE}{\mathrm{ATE}}
+\newcommand{\LATE}{\mathrm{LATE}}
+\newcommand{\indep}{\perp\!\!\!\perp}
+\newcommand{\derivbutton}[1]{\vspace{0.4em}\hfill\hyperlink{app:#1}{\beamerbutton{Appendix details}}}
+\newcommand{\backbutton}[1]{\vspace{0.4em}\hfill\hyperlink{main:#1}{\beamerbutton{Back to main slide}}}
+
+\title{Applied Econometrics: Session 9}
+\subtitle{Regression Discontinuity Design}
+\author{PhD Intensive Course}
+\institute{Lecture 9}
+\date{\today}
+
+\begin{document}
+
+\begin{frame}
+  \titlepage
+\end{frame}
+
+\begin{frame}{How This Lecture Fits the Course}
+  Earlier lectures used controls, instruments, matching, DiD, fixed effects, and synthetic controls to construct credible counterfactuals.
+  \vspace{0.4em}
+
+  Regression discontinuity uses a different source of credibility:
+  \begin{block}{Core idea}
+    If treatment changes discontinuously at a cutoff, units just below and just above the cutoff can be compared locally.
+  \end{block}
+
+  \begin{itemize}
+    \item The running variable is observed and determines eligibility.
+    \item The cutoff creates a jump in treatment probability.
+    \item The causal estimate is local: it applies at the cutoff, not automatically far away.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Roadmap for Today}
+  \tableofcontents
+\end{frame}
+
+\section{Cutoff Intuition}
+
+\begin{frame}{A Threshold as a Natural Experiment}
+  Examples of cutoff rules:
+  \begin{itemize}
+    \item students pass an exam if score \(\geq 50\);
+    \item firms receive a subsidy if employment is below 250 workers;
+    \item people become legally eligible for a program at a certain age;
+    \item municipalities receive extra funding if population is below a threshold.
+  \end{itemize}
+  \begin{block}{Why this may help}
+    A person who scores 49.9 and a person who scores 50.1 are probably very similar, except that the rule treats them differently.
+  \end{block}
+\end{frame}
+
+\begin{frame}{The Running Variable}
+  Let \(R_i\) be the running variable and \(c\) the cutoff.
+  \[
+    X_i \equiv R_i-c
+  \]
+  is the centered running variable.
+  \begin{itemize}
+    \item \(X_i<0\): unit is below the cutoff.
+    \item \(X_i=0\): unit is exactly at the cutoff.
+    \item \(X_i>0\): unit is above the cutoff.
+  \end{itemize}
+  \begin{block}{Practical habit}
+    Center the running variable before estimating RD. Then the intercepts of local regressions are values at the cutoff.
+  \end{block}
+\end{frame}
+
+\begin{frame}{Sharp RD Treatment Rule}
+  \hypertarget{main:sharp-rule}{}
+  A sharp RD has deterministic assignment:
+  \[
+    D_i = \mathbf{1}\{R_i \geq c\}
+    =
+    \mathbf{1}\{X_i \geq 0\}.
+  \]
+  \begin{itemize}
+    \item Everyone below the cutoff is untreated.
+    \item Everyone above the cutoff is treated.
+    \item The treatment probability jumps from 0 to 1 at \(c\).
+  \end{itemize}
+  \begin{block}{Important}
+    Sharp means the rule fully determines treatment. It does not mean the design is automatically valid.
+  \end{block}
+\end{frame}
+
+\begin{frame}{Potential Outcomes Near a Cutoff}
+  Each unit has two potential outcomes:
+  \[
+    Y_i(1), \qquad Y_i(0).
+  \]
+  We observe
+  \[
+    Y_i = D_iY_i(1)+(1-D_i)Y_i(0).
+  \]
+  \begin{itemize}
+    \item Above the cutoff, sharp RD reveals treated outcomes.
+    \item Below the cutoff, sharp RD reveals untreated outcomes.
+    \item The missing object is the counterfactual outcome on the other side of the cutoff.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{The Visual Logic}
+  Imagine plotting average outcome against \(X_i=R_i-c\).
+  \begin{itemize}
+    \item Away from the cutoff, treated and untreated units may be very different.
+    \item Very close to the cutoff, the running variable is nearly the same.
+    \item A discontinuous jump in the outcome at \(X=0\) is evidence of a treatment effect.
+  \end{itemize}
+  \begin{block}{RD picture in words}
+    Fit the smooth left-hand relationship up to the cutoff and the smooth right-hand relationship down to the cutoff. The vertical gap at zero is the RD estimate.
+  \end{block}
+\end{frame}
+
+\begin{frame}{What RD Identifies}
+  RD is not mainly about comparing all treated units with all untreated units.
+  \[
+    \text{all above cutoff} \quad \text{vs.} \quad \text{all below cutoff}
+  \]
+  is usually a bad comparison because high-\(R\) and low-\(R\) units differ.
+  \vspace{0.4em}
+
+  RD is about the limit comparison:
+  \[
+    R_i \downarrow c
+    \quad \text{vs.} \quad
+    R_i \uparrow c.
+  \]
+  \begin{block}{Local target}
+    RD estimates the treatment effect for units at the cutoff, or for units close enough that the cutoff comparison is credible.
+  \end{block}
+\end{frame}
+
+\begin{frame}{Why ``Barely Passed'' Is Not ``Passed by a Lot''}
+  Suppose an exam score determines graduation.
+  \begin{itemize}
+    \item Score 90 vs. score 40: very different students.
+    \item Score 50.1 vs. score 49.9: likely similar students.
+    \item The cutoff comparison removes much of the concern that ability drives the result.
+  \end{itemize}
+  \begin{block}{Student warning}
+    RD is credible because it is narrow. Do not turn a local design into a broad claim without extra evidence.
+  \end{block}
+\end{frame}
+
+\section{Sharp RD Identification}
+
+\begin{frame}{The Continuity Assumption}
+  \hypertarget{main:continuity}{}
+  For \(d\in\{0,1\}\), define
+  \[
+    \mu_d(r)=\E[Y_i(d)\mid R_i=r].
+  \]
+  The key identifying assumption is:
+  \[
+    \lim_{r\to c^-}\mu_d(r)
+    =
+    \lim_{r\to c^+}\mu_d(r),
+    \qquad d=0,1.
+  \]
+  \begin{itemize}
+    \item Potential outcomes may slope with the running variable.
+    \item They must not jump at the cutoff for reasons other than treatment.
+    \item The observed outcome can jump because treatment jumps.
+  \end{itemize}
+  \derivbutton{sharp-id}
+\end{frame}
+
+\begin{frame}{Sharp RD Estimand}
+  \hypertarget{main:sharp-estimand}{}
+  Under continuity and sharp assignment:
+  \[
+    \tau_{\mathrm{SRD}}
+    =
+    \lim_{r\to c^+}\E[Y_i\mid R_i=r]
+    -
+    \lim_{r\to c^-}\E[Y_i\mid R_i=r].
+  \]
+  This equals
+  \[
+    \E[Y_i(1)-Y_i(0)\mid R_i=c].
+  \]
+  \begin{block}{Interpretation}
+    The estimand is a treatment effect at the cutoff, not necessarily the average treatment effect for the full population.
+  \end{block}
+  \derivbutton{sharp-id}
+\end{frame}
+
+\begin{frame}{Local Randomization Intuition}
+  Near the cutoff, small differences in \(R_i\) can be as good as random.
+  \begin{itemize}
+    \item A student may barely pass or barely fail because of small test-day noise.
+    \item A person may be just above or below an age threshold because of date of birth.
+    \item A firm may just exceed an administrative size threshold.
+  \end{itemize}
+  \begin{block}{But be precise}
+    Local randomization is an intuition. The formal RD assumption is continuity of potential outcomes at the cutoff.
+  \end{block}
+\end{frame}
+
+\begin{frame}{What Can Break Continuity?}
+  Continuity fails if something else jumps at the same cutoff.
+  \begin{itemize}
+    \item Another policy starts at exactly the same threshold.
+    \item Measurement of the outcome changes at the cutoff.
+    \item People sort around the threshold using private information.
+    \item The cutoff itself is chosen because expected outcomes jump there.
+  \end{itemize}
+  \begin{block}{Design question}
+    If treatment did not change at the cutoff, would the expected outcome have moved smoothly through it?
+  \end{block}
+\end{frame}
+
+\begin{frame}{A Numeric Cutoff Example}
+  Imagine a scholarship for scores \(\geq 70\).
+  \[
+  \begin{array}{lcc}
+  \toprule
+  & \text{Mean outcome just below 70} & \text{Mean outcome just above 70} \\
+  \midrule
+  \text{Observed graduation rate} & 0.62 & 0.69 \\
+  \bottomrule
+  \end{array}
+  \]
+  The sharp RD estimate is
+  \[
+    0.69-0.62=0.07.
+  \]
+  \begin{block}{Correct wording}
+    The scholarship increased graduation by 7 percentage points for students at the score cutoff, if potential graduation rates would otherwise have been continuous at 70.
+  \end{block}
+\end{frame}
+
+\begin{frame}{What Not to Estimate}
+  A global mean comparison:
+  \[
+    \E[Y_i\mid R_i\geq c]-\E[Y_i\mid R_i<c]
+  \]
+  is generally not an RD estimand.
+  \begin{itemize}
+    \item Units far above and far below the cutoff can be very different.
+    \item The running variable itself often strongly predicts the outcome.
+    \item RD asks for a local discontinuity, not a global level difference.
+  \end{itemize}
+  \begin{block}{Exam phrase}
+    ``Close to the cutoff'' is not a cosmetic detail. It is the source of identification.
+  \end{block}
+\end{frame}
+
+\section{Local Linear Estimation}
+
+\begin{frame}{Center First}
+  Define
+  \[
+    X_i=R_i-c,
+    \qquad
+    Z_i=\mathbf{1}\{X_i\geq 0\}.
+  \]
+  Centering makes the cutoff equal to zero.
+  \begin{itemize}
+    \item Left of cutoff: \(Z_i=0\).
+    \item Right of cutoff: \(Z_i=1\).
+    \item At \(X_i=0\), slopes vanish and intercepts have a direct cutoff interpretation.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Local Linear RD Regression}
+  \hypertarget{main:local-linear}{}
+  A standard sharp RD specification is
+  \[
+    Y_i
+    =
+    \beta_0+\beta_1X_i+\tau Z_i+\beta_2(Z_iX_i)+u_i.
+  \]
+  \begin{itemize}
+    \item Below cutoff: \(\E[Y_i\mid X_i]=\beta_0+\beta_1X_i\).
+    \item Above cutoff: \(\E[Y_i\mid X_i]=(\beta_0+\tau)+(\beta_1+\beta_2)X_i\).
+    \item At \(X_i=0\), the right-left jump is \(\tau\).
+  \end{itemize}
+  \begin{block}{Interpretation}
+    This is like fitting two lines, one on each side, and comparing their intercepts at the cutoff.
+  \end{block}
+  \derivbutton{local-linear}
+\end{frame}
+
+\begin{frame}{Why Local, Not Global?}
+  If the true relationship between \(Y\) and \(R\) is curved, a line fit far from the cutoff can distort the predicted value at the cutoff.
+  \begin{itemize}
+    \item A very wide window gives more observations but more functional-form bias.
+    \item A very narrow window gives less bias but noisier estimates.
+    \item RD estimation is therefore a bias-variance tradeoff.
+  \end{itemize}
+  \begin{block}{Practical rule}
+    The chosen bandwidth should be reported, justified, and varied in robustness checks.
+  \end{block}
+\end{frame}
+
+\begin{frame}{Bandwidth}
+  Use observations with
+  \[
+    |X_i|\leq h.
+  \]
+  The bandwidth \(h\) controls how local the comparison is.
+  \begin{itemize}
+    \item Small \(h\): close comparison, high variance.
+    \item Large \(h\): more precision, more extrapolation.
+    \item Main estimates should not rely on one fragile bandwidth choice.
+  \end{itemize}
+  \begin{block}{Student habit}
+    Always ask: how many observations are inside the bandwidth on each side?
+  \end{block}
+\end{frame}
+
+\begin{frame}{Triangular Kernel Weights}
+  A common local weighting rule is the triangular kernel:
+  \[
+    K_i(h)
+    =
+    \mathbf{1}\{|X_i|\leq h\}
+    \left(1-\frac{|X_i|}{h}\right).
+  \]
+  \begin{itemize}
+    \item Units outside the bandwidth get zero weight.
+    \item Units near the cutoff get the largest weight.
+    \item Units near the edge of the window get small weight.
+  \end{itemize}
+  \begin{block}{Why this matches RD logic}
+    The closest observations are the most credible comparisons.
+  \end{block}
+\end{frame}
+
+\begin{frame}{Weighted Local Linear Estimator}
+  \hypertarget{main:wls}{}
+  Estimate
+  \[
+    \min_{\beta_0,\beta_1,\tau,\beta_2}
+    \sum_i
+    K_i(h)
+    \left[
+      Y_i-\beta_0-\beta_1X_i-\tau Z_i-\beta_2Z_iX_i
+    \right]^2.
+  \]
+  The coefficient on \(Z_i\) is the estimated jump at the cutoff.
+  \begin{block}{Key point}
+    The regression is only an interpolation device near the cutoff. The design, not the linear model, is doing the causal work.
+  \end{block}
+  \derivbutton{local-linear}
+\end{frame}
+
+\begin{frame}{Why Local Linear Is the Workhorse}
+  Local linear RD is popular because:
+  \begin{itemize}
+    \item it allows different slopes on the two sides;
+    \item it focuses on the boundary point \(X=0\);
+    \item it has better boundary behavior than a simple local mean;
+    \item it is easy to explain and graph.
+  \end{itemize}
+  \begin{block}{Caution}
+    High-order global polynomials can create artificial wiggles. They are usually a poor substitute for local estimation.
+  \end{block}
+\end{frame}
+
+\begin{frame}{Standard Errors}
+  RD uncertainty comes from estimating two limits with finite data.
+  \begin{itemize}
+    \item Use heteroskedasticity-robust standard errors as a default.
+    \item If data are clustered, cluster at the assignment or sampling level.
+    \item If the running variable is discrete with few support points, inference needs extra care.
+  \end{itemize}
+  \begin{block}{Reporting}
+    Report the point estimate, standard error, confidence interval, bandwidth, kernel, and observations on both sides.
+  \end{block}
+\end{frame}
+
+\section{Diagnostics}
+
+\begin{frame}{Graphical RD Plot}
+  A useful RD graph has:
+  \begin{itemize}
+    \item binned means of \(Y_i\) against centered \(X_i\);
+    \item a vertical line at the cutoff;
+    \item separate fitted curves or local lines on each side;
+    \item enough scale information to see the amount of data near zero.
+  \end{itemize}
+  \begin{block}{Purpose}
+    The graph should show whether the estimated jump is visible and whether the functional form looks plausible near the cutoff.
+  \end{block}
+\end{frame}
+
+\begin{frame}{Covariate Balance at the Cutoff}
+  Pre-treatment covariates should not jump at the cutoff.
+  \[
+    \lim_{r\to c^+}\E[W_i\mid R_i=r]
+    -
+    \lim_{r\to c^-}\E[W_i\mid R_i=r]
+    \approx 0
+  \]
+  for predetermined \(W_i\).
+  \begin{itemize}
+    \item Age, prior test scores, pre-policy outcomes, baseline demographics.
+    \item A covariate jump suggests sorting, another policy, or measurement problems.
+  \end{itemize}
+  \begin{block}{Do not overstate}
+    Balance tests cannot prove validity. They can reveal obvious failures.
+  \end{block}
+\end{frame}
+
+\begin{frame}{Manipulation and Density Checks}
+  \hypertarget{main:density}{}
+  The density of the running variable should be smooth through the cutoff.
+  \begin{itemize}
+    \item If people can precisely manipulate \(R_i\), many may bunch just on the favorable side.
+    \item Examples: reported income thresholds, exam retakes, administrative score rounding.
+    \item A density jump weakens the ``barely below vs. barely above'' comparison.
+  \end{itemize}
+  \begin{block}{McCrary-style idea}
+    Check whether the number of observations changes discontinuously at the cutoff.
+  \end{block}
+  \derivbutton{density-check}
+\end{frame}
+
+\begin{frame}{Placebo Checks}
+  RD placebo checks ask whether jumps appear where they should not.
+  \begin{itemize}
+    \item Use fake cutoffs where treatment does not change.
+    \item Use pre-treatment outcomes as placebo outcomes.
+    \item Use predetermined covariates as placebo outcomes.
+  \end{itemize}
+  \begin{block}{Interpretation}
+    A placebo failure does not tell you exactly what is wrong, but it tells you the cutoff is not behaving like a clean local experiment.
+  \end{block}
+\end{frame}
+
+\begin{frame}{Donut RD}
+  Sometimes observations extremely close to the cutoff are suspicious.
+  \begin{itemize}
+    \item Scores may be rounded or manually adjusted.
+    \item People may manipulate just enough to cross the rule.
+    \item Administrative discretion may concentrate at the threshold.
+  \end{itemize}
+  A donut RD drops a small interval around the cutoff:
+  \[
+    \delta < |X_i| \leq h.
+  \]
+  \begin{block}{Use}
+    Donut RD is a sensitivity check, not a license to ignore manipulation.
+  \end{block}
+\end{frame}
+
+\begin{frame}{RD Reporting Checklist}
+  A credible RD write-up should state:
+  \begin{itemize}
+    \item running variable and cutoff;
+    \item why the rule changes treatment at that cutoff;
+    \item sharp or fuzzy design;
+    \item local estimand and population near the cutoff;
+    \item bandwidth, kernel, and polynomial order;
+    \item RD plot, covariate balance, and density/manipulation evidence;
+    \item robustness to bandwidths and reasonable specifications.
+  \end{itemize}
+\end{frame}
+
+\section{Fuzzy RD}
+
+\begin{frame}{When RD Is Fuzzy}
+  A fuzzy RD occurs when treatment probability jumps at the cutoff but not from 0 to 1.
+  \[
+    \lim_{r\to c^+}\Prob(D_i=1\mid R_i=r)
+    \neq
+    \lim_{r\to c^-}\Prob(D_i=1\mid R_i=r)
+  \]
+  but both probabilities may be between 0 and 1.
+  \begin{itemize}
+    \item Some eligible people do not take treatment.
+    \item Some ineligible people receive treatment anyway.
+    \item The cutoff is an instrument for treatment receipt.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Examples of Fuzzy RD}
+  \begin{itemize}
+    \item Legal drinking age increases access to alcohol, but some underage people drink.
+    \item Passing an exam increases diploma receipt, but some failing students later receive credentials.
+    \item Program eligibility increases participation, but some eligible people do not enroll.
+    \item A scholarship cutoff increases aid receipt, but take-up is incomplete.
+  \end{itemize}
+  \begin{block}{Translation}
+    Sharp RD estimates the effect of eligibility if eligibility equals treatment. Fuzzy RD estimates the effect of treatment for cutoff compliers.
+  \end{block}
+\end{frame}
+
+\begin{frame}{Cutoff as an Instrument}
+  Define the cutoff indicator:
+  \[
+    Z_i=\mathbf{1}\{R_i\geq c\}.
+  \]
+  In fuzzy RD, \(Z_i\) is an instrument for actual treatment \(D_i\).
+  \begin{itemize}
+    \item First stage: \(Z_i\) changes treatment probability at \(c\).
+    \item Reduced form: \(Z_i\) changes the outcome at \(c\).
+    \item Wald ratio: reduced-form jump divided by first-stage jump.
+  \end{itemize}
+  \begin{block}{Connection to Lecture 5}
+    Fuzzy RD is IV where the instrument is local cutoff eligibility.
+  \end{block}
+\end{frame}
+
+\begin{frame}{Fuzzy RD Estimand}
+  \hypertarget{main:fuzzy-estimand}{}
+  The fuzzy RD estimand is
+  \[
+    \tau_{\mathrm{FRD}}
+    =
+    \frac{
+      \lim_{r\to c^+}\E[Y_i\mid R_i=r]
+      -
+      \lim_{r\to c^-}\E[Y_i\mid R_i=r]
+    }{
+      \lim_{r\to c^+}\E[D_i\mid R_i=r]
+      -
+      \lim_{r\to c^-}\E[D_i\mid R_i=r]
+    }.
+  \]
+  Under the usual IV assumptions locally at the cutoff, this is
+  \[
+    \E[Y_i(1)-Y_i(0)\mid \text{complier at }c].
+  \]
+  \derivbutton{fuzzy-wald}
+\end{frame}
+
+\begin{frame}{Fuzzy RD Assumptions}
+  For a local Wald interpretation, we need:
+  \begin{enumerate}
+    \item continuity of potential outcomes at the cutoff;
+    \item a nonzero first-stage jump in treatment;
+    \item exclusion: crossing the cutoff affects \(Y\) only through \(D\);
+    \item monotonicity: crossing the cutoff does not make anyone less likely to receive treatment.
+  \end{enumerate}
+  \begin{block}{Interpretation}
+    The estimate is local twice: local to the cutoff and local to compliers whose treatment status is changed by crossing the cutoff.
+  \end{block}
+\end{frame}
+
+\begin{frame}{Numeric Fuzzy RD Example}
+  \[
+  \begin{array}{lcc}
+  \toprule
+  & \text{Just below cutoff} & \text{Just above cutoff} \\
+  \midrule
+  \E[Y\mid R] & 50 & 56 \\
+  \E[D\mid R] & 0.30 & 0.80 \\
+  \bottomrule
+  \end{array}
+  \]
+  Reduced-form jump:
+  \[
+    56-50=6.
+  \]
+  First-stage jump:
+  \[
+    0.80-0.30=0.50.
+  \]
+  Fuzzy RD estimate:
+  \[
+    \frac{6}{0.50}=12.
+  \]
+\end{frame}
+
+\begin{frame}{Sharp vs. Fuzzy RD}
+  \small
+  \begin{tabular}{>{\raggedright\arraybackslash}p{0.25\linewidth}>{\raggedright\arraybackslash}p{0.30\linewidth}>{\raggedright\arraybackslash}p{0.30\linewidth}}
+    \toprule
+    Feature & Sharp RD & Fuzzy RD \\
+    \midrule
+    Treatment rule & \(D_i=\mathbf{1}\{R_i\geq c\}\) & cutoff shifts probability of \(D_i\) \\
+    Jump used & outcome jump & outcome jump divided by treatment jump \\
+    Interpretation & effect at cutoff & complier effect at cutoff \\
+    Analogy & local experiment & local IV design \\
+    Main danger & discontinuity from other causes & weak first stage or exclusion failure \\
+    \bottomrule
+  \end{tabular}
+\end{frame}
+
+\section{Simulation and Review}
+
+\begin{frame}{Python Example for This Lecture}
+  The companion script is:
+  \[
+    \texttt{lectures/code/lecture-9-rdd.py}.
+  \]
+  It simulates:
+  \begin{itemize}
+    \item sharp RD data with a known treatment effect at the cutoff;
+    \item local linear estimates under several bandwidths;
+    \item fuzzy RD with incomplete take-up and a local Wald estimate;
+    \item covariate and density diagnostics for manipulation checks.
+  \end{itemize}
+  \begin{block}{Use in class}
+    Ask students to change the bandwidth and curvature, then predict how bias and variance should move before running the script.
+  \end{block}
+\end{frame}
+
+\begin{frame}{What the Simulation Should Teach}
+  \begin{itemize}
+    \item The global treated-control gap is not the RD estimate.
+    \item Local linear estimates get closer to the true cutoff effect when the window is reasonable.
+    \item Very narrow windows can be unstable because little data remain.
+    \item In fuzzy RD, the outcome jump must be scaled by the treatment jump.
+    \item Manipulation shows up as suspicious bunching in the running variable.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Common Mistakes}
+  \small
+  \begin{itemize}
+    \item Calling any threshold regression an RD without showing treatment jumps at the cutoff.
+    \item Comparing all observations above and below the cutoff.
+    \item Forgetting to center the running variable before interpreting the intercept.
+    \item Using high-order global polynomials as the main design.
+    \item Ignoring density and covariate balance diagnostics.
+    \item Treating fuzzy RD as sharp RD.
+    \item Claiming an ATE for everyone when the design identifies a cutoff effect.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Main Takeaways}
+  \begin{enumerate}
+    \item RD uses a cutoff rule to construct a local comparison.
+    \item Sharp RD identifies the outcome jump at the cutoff as the treatment effect under continuity.
+    \item Local linear regression estimates the two one-sided limits.
+    \item Bandwidth choice controls the bias-variance tradeoff.
+    \item Diagnostics should check graphs, covariates, and density around the cutoff.
+    \item Fuzzy RD is a local IV design: reduced form divided by first stage.
+  \end{enumerate}
+\end{frame}
+
+\begin{frame}{Source and Further Reading}
+  This lecture is based on ideas from:
+  \begin{itemize}
+    \item Matheus Facure Alves, \emph{Causal Inference for the Brave and True}, Chapter 16, "Regression Discontinuity Design".
+    \item Angrist and Pischke, \emph{Mostly Harmless Econometrics}, chapter on regression discontinuity.
+    \item Angrist and Pischke, \emph{Mastering 'Metrics}, chapter on regression discontinuity.
+    \item Lee and Lemieux (2010), "Regression Discontinuity Designs in Economics".
+  \end{itemize}
+  \vspace{0.3em}
+  Handbook URL:
+  \begin{itemize}
+    \item \url{https://matheusfacure.github.io/python-causality-handbook/16-Regression-Discontinuity-Design.html}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{What Students Should Be Able to Do}
+  After this lecture, students should be able to:
+  \begin{itemize}
+    \item identify the running variable, cutoff, and treatment rule;
+    \item write the sharp RD estimand using one-sided limits;
+    \item explain the continuity assumption in words;
+    \item estimate and interpret a local linear RD coefficient;
+    \item explain the role of bandwidth and kernel weights;
+    \item distinguish sharp and fuzzy RD;
+    \item describe graphical, covariate, and manipulation diagnostics.
+  \end{itemize}
+\end{frame}
+
+\appendix
+
+\begin{frame}{Appendix Map}
+  \begin{itemize}
+    \item A1: Sharp RD identification.
+    \item A2: Local linear RD coefficient.
+    \item A3: Bandwidth bias-variance logic.
+    \item A4: Fuzzy RD as local Wald/IV.
+    \item A5: Density manipulation check.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Appendix A1: Sharp RD Identification}
+  \hypertarget{app:sharp-id}{}
+  \small
+  In a sharp RD,
+  \[
+    D_i=\mathbf{1}\{R_i\geq c\}.
+  \]
+  Therefore,
+  \[
+    \lim_{r\to c^+}\E[Y_i\mid R_i=r]
+    =
+    \lim_{r\to c^+}\E[Y_i(1)\mid R_i=r],
+  \]
+  and
+  \[
+    \lim_{r\to c^-}\E[Y_i\mid R_i=r]
+    =
+    \lim_{r\to c^-}\E[Y_i(0)\mid R_i=r].
+  \]
+  By continuity of \(\E[Y_i(d)\mid R_i=r]\) at \(c\),
+  \[
+    \lim_{r\to c^+}\E[Y_i(1)\mid R_i=r]=\E[Y_i(1)\mid R_i=c],
+  \]
+  \[
+    \lim_{r\to c^-}\E[Y_i(0)\mid R_i=r]=\E[Y_i(0)\mid R_i=c].
+  \]
+  Subtracting gives
+  \[
+    \tau_{\mathrm{SRD}}
+    =
+    \E[Y_i(1)-Y_i(0)\mid R_i=c].
+  \]
+  \backbutton{sharp-estimand}
+\end{frame}
+
+\begin{frame}{Appendix A2: Local Linear RD Coefficient}
+  \hypertarget{app:local-linear}{}
+  With \(X_i=R_i-c\) and \(Z_i=\mathbf{1}\{X_i\geq 0\}\), estimate
+  \[
+    Y_i
+    =
+    \beta_0+\beta_1X_i+\tau Z_i+\beta_2Z_iX_i+u_i.
+  \]
+  For \(X_i<0\), \(Z_i=0\), so
+  \[
+    \E[Y_i\mid X_i=x,Z_i=0]=\beta_0+\beta_1x.
+  \]
+  Taking the left limit at zero gives
+  \[
+    \lim_{x\to 0^-}\E[Y_i\mid X_i=x]=\beta_0.
+  \]
+  For \(X_i\geq 0\), \(Z_i=1\), so
+  \[
+    \E[Y_i\mid X_i=x,Z_i=1]=(\beta_0+\tau)+(\beta_1+\beta_2)x.
+  \]
+  Taking the right limit at zero gives \(\beta_0+\tau\). The jump is \(\tau\).
+  \backbutton{local-linear}
+\end{frame}
+
+\begin{frame}{Appendix A3: Bandwidth Bias-Variance Logic}
+  \hypertarget{app:bw-logic}{}
+  Let \(\widehat{\tau}(h)\) be the RD estimate using bandwidth \(h\).
+  A useful mental decomposition is
+  \[
+    \widehat{\tau}(h)-\tau
+    =
+    \underbrace{\text{bias}(h)}_{\text{curvature/extrapolation}}
+    +
+    \underbrace{\text{noise}(h)}_{\text{sampling variation}}.
+  \]
+  \begin{itemize}
+    \item As \(h\) increases, more observations enter, so variance usually falls.
+    \item As \(h\) increases, observations farther from the cutoff influence the fit, so bias may rise.
+    \item As \(h\) shrinks, bias usually falls, but the estimate becomes noisy.
+  \end{itemize}
+  \[
+    \text{MSE}(h)=\text{bias}(h)^2+\Var(\widehat{\tau}(h)).
+  \]
+  \backbutton{wls}
+\end{frame}
+
+\begin{frame}{Appendix A4: Fuzzy RD as Local Wald}
+  \hypertarget{app:fuzzy-wald}{}
+  Let \(Z_i=\mathbf{1}\{R_i\geq c\}\). Define the local reduced-form jump:
+  \[
+    \Delta_Y
+    =
+    \lim_{r\to c^+}\E[Y_i\mid R_i=r]
+    -
+    \lim_{r\to c^-}\E[Y_i\mid R_i=r].
+  \]
+  Define the local first-stage jump:
+  \[
+    \Delta_D
+    =
+    \lim_{r\to c^+}\E[D_i\mid R_i=r]
+    -
+    \lim_{r\to c^-}\E[D_i\mid R_i=r].
+  \]
+  Under continuity, exclusion, relevance, and monotonicity,
+  \[
+    \Delta_Y
+    =
+    \E[Y_i(1)-Y_i(0)\mid D_i(1)>D_i(0),R_i=c]\Delta_D.
+  \]
+  Hence
+  \[
+    \frac{\Delta_Y}{\Delta_D}
+    =
+    \E[Y_i(1)-Y_i(0)\mid \text{complier at }c].
+  \]
+  \backbutton{fuzzy-estimand}
+\end{frame}
+
+\begin{frame}{Appendix A5: Density Manipulation Check}
+  \hypertarget{app:density-check}{}
+  Let \(f_R(r)\) be the density of the running variable.
+  A manipulation check asks whether
+  \[
+    \lim_{r\to c^-}f_R(r)
+    =
+    \lim_{r\to c^+}f_R(r).
+  \]
+  If the density jumps at \(c\), units may be sorting around the threshold.
+  \vspace{0.4em}
+
+  A simple classroom approximation:
+  \begin{enumerate}
+    \item bin the running variable into narrow intervals;
+    \item count observations in each bin;
+    \item look for a discontinuous count jump at the cutoff.
+  \end{enumerate}
+  Formal McCrary-style tests use local smoothing of the log density on both sides.
+  \backbutton{density}
+\end{frame}
+
+\end{document}

@@ -1,0 +1,594 @@
+\input{tufte-style.tex}
+
+\title{Applied Econometrics: Session 2 Notes}
+\author{Swapnil Singh}
+\date{}
+
+\hypersetup{
+  pdftitle={Applied Econometrics: Session 2 Notes},
+  pdfauthor={Swapnil Singh},
+  pdfkeywords={regression, CEF, selection on observables, matching, propensity score, bad controls}
+}
+
+\setlength{\headheight}{26pt}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+This lecture explains what regression means before we use it for causality.
+Regression is a linear approximation to conditional means. It becomes causal
+only after an identification argument connects observed conditional means to
+potential-outcome means. We study the conditional expectation function, the law
+of iterated expectations, regression anatomy, conditional independence,
+omitted-variable bias, bad controls, matching, propensity scores, inverse
+probability weighting, and practical issues such as grouped data, weights, and
+limited dependent variables.
+\end{abstract}
+
+\begin{boxD}
+\textbf{Reading and objective.} These notes accompany Session 2, which builds
+on the Mostly Harmless Econometrics treatment of regression, controls, matching,
+and selection on observables. The objective is to understand what regression
+always estimates mechanically, and then to state the additional assumptions
+needed before a regression coefficient can be read as a causal effect.
+\end{boxD}
+
+\section{Regression Starts with Conditional Means}
+
+Lecture 1 introduced the causal problem: we want missing potential outcomes.
+Lecture 2 asks how regression can help. The answer has two layers.
+\begin{enumerate}
+    \item Mechanically, regression summarizes conditional means.
+    \item Causally, regression is useful only if conditioning creates credible
+    comparisons.
+\end{enumerate}
+
+\begin{boxF}
+\textbf{Core warning.} Regression is not a causal machine. It is a statistical
+summary. Causal interpretation comes from assumptions about treatment assignment,
+controls, timing, and comparison groups.
+\end{boxF}
+
+\subsection{The Conditional Expectation Function}
+
+For outcome \(Y_i\) and covariates \(X_i\), the conditional expectation function
+is
+\[
+    m(x)=\E[Y_i\mid X_i=x].
+\]
+It gives the average outcome among units with covariate value \(x\). If \(X_i\)
+is schooling, \(m(12)\) is the average outcome among people with 12 years of
+schooling. If \(X_i\) is a vector, \(m(x)\) is an average within a covariate
+cell or covariate profile.
+
+\begin{defN}[Conditional expectation function]
+The CEF of \(Y_i\) given \(X_i\) is the function
+\[
+    m(X_i)=\E[Y_i\mid X_i].
+\]
+It is the best unrestricted mean-square predictor of \(Y_i\) using \(X_i\).
+\end{defN}
+
+The CEF is descriptive unless we add causal assumptions. For example,
+\(\E[\log w_i\mid S_i=16]\) is the average log wage of workers with 16 years of
+schooling. It does not by itself say what the same workers would have earned if
+they had received less schooling.
+
+\subsection{Law of Iterated Expectations}
+
+The law of iterated expectations says
+\[
+    \E[Y_i]=\E\{\E[Y_i\mid X_i]\}.
+\]
+First average \(Y_i\) within covariate groups. Then average those conditional
+means over the distribution of \(X_i\). This identity is the bridge from
+cell-specific objects to population averages.
+
+\begin{exmp}[Two schooling groups]
+Suppose 40 percent of workers have 12 years of schooling and average wage 20,
+while 60 percent have 16 years of schooling and average wage 35. The overall
+average wage is
+\[
+    0.4(20)+0.6(35)=29.
+\]
+This is exactly the law of iterated expectations in a discrete example.
+\end{exmp}
+
+\subsection{CEF Decomposition}
+
+Write
+\[
+    Y_i = \E[Y_i\mid X_i] + \varepsilon_i.
+\]
+Then
+\[
+    \E[\varepsilon_i\mid X_i]=0.
+\]
+This says that once we subtract the conditional mean, the remaining error has
+zero average within every covariate group. Therefore the residual is uncorrelated
+with any function of \(X_i\).
+
+\begin{thmN}[CEF decomposition]
+Let \(\varepsilon_i=Y_i-\E[Y_i\mid X_i]\). Then
+\[
+    \E[\varepsilon_i\mid X_i]=0
+\]
+and for any function \(g\),
+\[
+    \E[g(X_i)\varepsilon_i]=0.
+\]
+\end{thmN}
+
+\begin{proof}
+The first statement follows from
+\[
+    \E[\varepsilon_i\mid X_i]
+    =
+    \E[Y_i-\E[Y_i\mid X_i]\mid X_i]
+    =
+    \E[Y_i\mid X_i]-\E[Y_i\mid X_i]
+    =
+    0.
+\]
+For the second statement, use iterated expectations:
+\[
+    \E[g(X_i)\varepsilon_i]
+    =
+    \E\{g(X_i)\E[\varepsilon_i\mid X_i]\}=0.
+\]
+\end{proof}
+
+\section{Population Regression}
+
+Regression is a linear approximation problem. Let \(X_i\) include an intercept.
+The population linear regression coefficient is
+\[
+    \beta
+    =
+    \argmin_b \E[(Y_i-X_i'b)^2].
+\]
+The first-order condition is
+\[
+    \E[X_i(Y_i-X_i'\beta)]=0.
+\]
+If \(\E[X_iX_i']\) is invertible, then
+\[
+    \beta = \E[X_iX_i']^{-1}\E[X_iY_i].
+\]
+
+\begin{defN}[Population regression coefficient]
+The population regression coefficient is the coefficient vector of the best
+linear predictor of \(Y_i\) from \(X_i\) in mean squared error.
+\end{defN}
+
+The residual \(e_i=Y_i-X_i'\beta\) is orthogonal to the regressors:
+\[
+    \E[X_i e_i]=0.
+\]
+This orthogonality is an algebraic property of least squares. It does not mean
+the regressors are exogenous in the causal sense.
+
+\begin{boxF}
+\textbf{Important distinction.} Regression residuals are orthogonal to included
+regressors by construction. That is not the same as saying the regressors are
+as-good-as-random.
+\end{boxF}
+
+\subsection{Regression Anatomy}
+
+In a simple regression of \(Y_i\) on an intercept and scalar \(x_i\),
+\[
+    \beta_1=\frac{\Cov(Y_i,x_i)}{\Var(x_i)}.
+\]
+In multiple regression, the coefficient on \(x_{ki}\) has the same form after
+removing the part of \(x_{ki}\) explained by the other regressors. Let
+\(\tilde{x}_{ki}\) be the residual from regressing \(x_{ki}\) on the other
+covariates. Then
+\[
+    \beta_k
+    =
+    \frac{\Cov(Y_i,\tilde{x}_{ki})}{\Var(\tilde{x}_{ki})}.
+\]
+
+\begin{thmN}[Regression anatomy]
+A multiple-regression coefficient is a bivariate slope using only the residual
+variation in the regressor that remains after partialling out the other
+covariates.
+\end{thmN}
+
+\begin{boxD}
+\textbf{Plain-language interpretation.} The coefficient on schooling in a wage
+regression with age and region controls compares workers who differ in schooling
+after removing the part of schooling predicted by age and region. This is why
+control choice matters so much.
+\end{boxD}
+
+\subsection{Saturated Models}
+
+If all controls are discrete and we include a dummy for every cell, regression
+is saturated. A saturated regression reproduces cell means exactly. If we leave
+out interactions, we impose restrictions. For example, controlling for gender
+and region without a gender-by-region interaction assumes the gender difference
+does not vary by region, unless other variables capture it.
+
+\begin{boxF}
+\textbf{Student warning.} ``Controlling for \(X\)'' is vague. A linear control,
+a set of dummies, and a fully interacted saturated model are different
+statistical objects.
+\end{boxF}
+
+\section{Regression and Causality}
+
+Regression becomes causal when the conditional comparisons in the data reveal
+potential-outcome comparisons. The key assumption in this lecture is selection
+on observables, also called conditional independence.
+
+\begin{assN}[Conditional independence]
+For binary treatment \(D_i\) and covariates \(X_i\),
+\[
+    (Y_{1i},Y_{0i}) \indep D_i \mid X_i.
+\]
+Conditional on \(X_i\), treatment is as good as randomly assigned.
+\end{assN}
+
+If conditional independence holds, then for each \(x\),
+\[
+    \E[Y_i\mid D_i=1,X_i=x]=\E[Y_{1i}\mid X_i=x],
+\]
+and
+\[
+    \E[Y_i\mid D_i=0,X_i=x]=\E[Y_{0i}\mid X_i=x].
+\]
+Therefore the conditional observed difference
+\[
+    \E[Y_i\mid D_i=1,X_i=x]-\E[Y_i\mid D_i=0,X_i=x]
+\]
+identifies the treatment effect at covariate value \(x\):
+\[
+    \E[Y_{1i}-Y_{0i}\mid X_i=x].
+\]
+
+\begin{boxD}
+\textbf{What CIA buys.} It lets us compare treated and untreated units within
+the same covariate cell as if treatment were randomized inside that cell.
+\end{boxD}
+
+\subsection{From Cell Effects to Population Effects}
+
+After estimating \(X\)-specific effects, we must decide how to average them.
+The ATE averages using the population distribution of \(X\):
+\[
+    \ATE = \E\left[\E[Y_{1i}-Y_{0i}\mid X_i]\right].
+\]
+The ATT averages using the distribution of \(X\) among treated units:
+\[
+    \ATT = \E\left[\E[Y_{1i}-Y_{0i}\mid X_i]\mid D_i=1\right].
+\]
+These differ when treatment effects vary and treated units have a different
+covariate distribution than the full population.
+
+\begin{exmp}[Training program]
+Suppose a training program helps low-experience workers by 8 units and
+high-experience workers by 2 units. If most treated workers are low-experience,
+the ATT can be much larger than the ATE. Reporting ``the'' treatment effect
+without saying how effects are averaged is incomplete.
+\end{exmp}
+
+\section{Omitted Variables and Bad Controls}
+
+Consider the causal model
+\[
+    Y_i=\alpha+\tau D_i+\gamma Z_i+u_i,
+\]
+but suppose we estimate
+\[
+    Y_i=a+bD_i+v_i.
+\]
+Then the short-regression coefficient is
+\[
+    b=\tau+\gamma\frac{\Cov(D_i,Z_i)}{\Var(D_i)}.
+\]
+
+\begin{thmN}[Omitted-variable bias]
+When the true linear model includes \(Z_i\) but \(Z_i\) is omitted, the
+coefficient on \(D_i\) equals the causal effect plus
+\[
+    \gamma\delta,
+    \qquad
+    \delta=\frac{\Cov(D_i,Z_i)}{\Var(D_i)}.
+\]
+Bias requires two ingredients: the omitted variable predicts the outcome and is
+correlated with treatment.
+\end{thmN}
+
+\begin{boxD}
+\textbf{Sign rule.} Bias is positive if the omitted variable raises the outcome
+and treated units have more of it. Bias is negative if the omitted variable
+raises the outcome and treated units have less of it. Always write both signs.
+\end{boxD}
+
+\begin{exmp}[Schooling and wages]
+If ability raises wages and high-ability workers obtain more schooling, omitting
+ability biases the schooling coefficient upward. If a scholarship program
+targets disadvantaged students who would otherwise have low earnings, omitting
+disadvantage may bias the program coefficient downward.
+\end{exmp}
+
+\subsection{Good Controls}
+
+A good control is usually a pre-treatment variable that affects both treatment
+assignment and potential outcomes. It helps compare treated and untreated units
+that were similar before treatment.
+
+\begin{defN}[Good control]
+A good control is determined before treatment and blocks a back-door path
+between treatment and outcome without itself being caused by treatment.
+\end{defN}
+
+\subsection{Bad Controls}
+
+Bad controls are variables that make the comparison worse. The most common bad
+control is a mediator, a variable caused by treatment on the path to the
+outcome. Controlling for it removes part of the effect we may want to estimate.
+
+\begin{defN}[Mediator]
+A mediator is a variable \(M_i\) affected by treatment that in turn affects the
+outcome. If the target is the total effect of treatment, controlling for
+\(M_i\) blocks part of the causal channel.
+\end{defN}
+
+Another bad-control problem is conditioning on a collider or selected sample.
+If a variable is affected by treatment and by unobserved determinants of the
+outcome, conditioning on it can create artificial association.
+
+\begin{boxF}
+\textbf{Control-selection rule.} Controls are not chosen because they make
+\(R^2\) larger. They are chosen because the causal design says they are needed
+and safe.
+\end{boxF}
+
+\section{Matching}
+
+Matching implements the conditional-independence idea directly. For each treated
+unit, find untreated units with similar covariates and use their outcomes as
+counterfactuals.
+
+\begin{defN}[Matching estimator, ATT intuition]
+For treated unit \(i\), let \(j(i)\) be a matched untreated unit with similar
+covariates. A simple matching estimator for the ATT is
+\[
+    \widehat{\ATT}
+    =
+    \frac{1}{N_1}\sum_{i:D_i=1}\left(Y_i-Y_{j(i)}\right).
+\]
+\end{defN}
+
+Exact matching is transparent but quickly becomes impossible when \(X_i\) has
+many components. Nearest-neighbor matching is feasible but introduces judgment:
+how close is close enough? Which distance metric should be used? Should controls
+be reused? Should bad matches be dropped?
+
+\begin{boxF}
+\textbf{Curse of dimensionality.} With many covariates, exact matches become
+rare. Matching then depends heavily on distance metrics and overlap.
+\end{boxF}
+
+\subsection{Common Support}
+
+Common support means treated and untreated units overlap in covariate space.
+If treated units have covariate values that never occur among controls, the data
+contain no credible comparison for those treated units.
+
+\begin{assN}[Overlap]
+For treatment probability \(p(X_i)=\Pr(D_i=1\mid X_i)\),
+\[
+    0 < p(X_i) < 1
+\]
+for covariate values in the target population.
+\end{assN}
+
+\section{Propensity Scores}
+
+The propensity score is
+\[
+    p(X_i)=\Pr(D_i=1\mid X_i).
+\]
+It compresses many covariates into one scalar treatment probability.
+
+\begin{thmN}[Propensity-score theorem]
+If
+\[
+    (Y_{1i},Y_{0i})\indep D_i\mid X_i,
+\]
+then
+\[
+    (Y_{1i},Y_{0i})\indep D_i\mid p(X_i).
+\]
+\end{thmN}
+
+The theorem says that if conditioning on all covariates is enough, then
+conditioning on the propensity score is also enough. It does not say that a
+poorly estimated propensity score solves hidden confounding. It also does not
+remove the need for overlap.
+
+\begin{boxF}
+\textbf{Beginner trap.} The goal of a propensity-score model is not maximum
+classification accuracy. A model that predicts treatment almost perfectly may
+destroy overlap. The goal is balance between treated and untreated units.
+\end{boxF}
+
+\subsection{Inverse Probability Weighting}
+
+Inverse probability weighting reweights observations to construct a pseudo-
+population in which treatment is independent of covariates. For the ATE,
+\[
+    \widehat{\ATE}_{IPW}
+    =
+    \frac{1}{n}\sum_{i=1}^n
+    \left[
+    \frac{D_iY_i}{\hat{p}(X_i)}
+    -
+    \frac{(1-D_i)Y_i}{1-\hat{p}(X_i)}
+    \right].
+\]
+
+The intuition is simple. Treated units who were unlikely to be treated get large
+weight because they represent many similar untreated-looking units. Control
+units who were unlikely to be controls also get large weight. Extreme weights
+are therefore a warning sign about overlap.
+
+\begin{boxD}
+\textbf{Family resemblance.} Regression, matching, propensity-score matching,
+and IPW all try to compare treated and untreated units with similar observed
+covariates. They differ in modeling choices and weighting, not in the basic
+identification assumption.
+\end{boxD}
+
+\section{Practical Regression Issues}
+
+\subsection{Weights and Grouped Data}
+
+If data are grouped into cells, a regression on cell means should usually weight
+by cell size when the target is the microdata regression. A cell with 1,000
+observations contains more information about the micro population than a cell
+with 5 observations.
+
+\begin{thmN}[Grouped regression weighting]
+When cell means are used in place of microdata and the target is the original
+microdata least-squares coefficient, weighted least squares with weights equal
+to cell counts recovers the microdata regression under the corresponding
+cell-mean specification.
+\end{thmN}
+
+\begin{boxF}
+\textbf{Heteroskedasticity warning.} Do not weight mechanically just because
+errors are heteroskedastic. Robust standard errors often handle inference
+without changing the estimand. Weighting changes the coefficient by changing
+which observations matter more.
+\end{boxF}
+
+\subsection{Limited Dependent Variables}
+
+OLS can be useful even when the outcome is binary. If \(Y_i\in\{0,1\}\), then
+\[
+    \E[Y_i\mid X_i]=\Pr(Y_i=1\mid X_i).
+\]
+A linear probability model approximates this conditional probability. It may
+predict values outside \([0,1]\), but the coefficient can still be a useful
+average marginal effect.
+
+Probit and logit impose nonlinear probability curves. They are often used for
+prediction or because the nonlinear shape is substantively helpful. But their
+coefficients are not directly comparable to OLS coefficients; marginal effects
+are the relevant comparison object.
+
+\subsection{Conditional-on-Positive Outcomes}
+
+Sometimes researchers study outcomes only when they are positive, such as wages
+only among employed workers or medical spending only among users. This can be a
+bad-control problem because treatment may affect whether the outcome is
+positive.
+
+\begin{boxF}
+\textbf{Conditional-on-positive warning.} If treatment changes the probability
+that \(Y_i>0\), then analyzing only observations with \(Y_i>0\) conditions on a
+post-treatment event. The result is generally not the total causal effect.
+\end{boxF}
+
+\section{Worked Problems}
+
+\begin{exmp}[Using the law of iterated expectations]
+Suppose half the sample is young with average outcome 10, and half is old with
+average outcome 16. Then
+\[
+    \E[Y]=0.5(10)+0.5(16)=13.
+\]
+The unconditional mean is a weighted average of conditional means.
+\end{exmp}
+
+\begin{exmp}[Omitted-variable bias sign]
+Let \(D_i\) be college attendance and \(Z_i\) be ability. Suppose ability raises
+wages, so \(\gamma>0\), and ability is positively correlated with college, so
+\(\delta>0\). The omitted-variable bias is \(\gamma\delta>0\). A regression of
+wages on college alone overstates the causal return to college.
+\end{exmp}
+
+\begin{exmp}[ATT versus ATE weights]
+There are two groups. Low-experience workers have treatment effect 8 and make up
+70 percent of treated workers but 40 percent of the population. High-experience
+workers have treatment effect 2. Then
+\[
+    \ATT=0.7(8)+0.3(2)=6.2,
+\]
+while
+\[
+    \ATE=0.4(8)+0.6(2)=4.4.
+\]
+The estimand changes because the weights change.
+\end{exmp}
+
+\begin{exmp}[Simple IPW calculation]
+A treated unit has outcome 12 and propensity score 0.25. Its treated contribution
+to the ATE IPW sum is
+\[
+    \frac{12}{0.25}=48.
+\]
+The large weight reflects that treated units with this \(X\) value are rare.
+Large weights make estimates sensitive and should trigger overlap diagnostics.
+\end{exmp}
+
+\section{Checklist for Students}
+
+After this lecture you should be able to:
+\begin{itemize}
+    \item define the conditional expectation function;
+    \item use the law of iterated expectations;
+    \item explain the CEF decomposition property;
+    \item define population regression as a best linear predictor;
+    \item interpret regression anatomy and partialling out;
+    \item distinguish mechanical regression interpretation from causal interpretation;
+    \item state conditional independence in potential-outcomes notation;
+    \item explain how CIA identifies conditional treatment effects;
+    \item distinguish ATE and ATT weighting;
+    \item derive and sign the omitted-variable-bias formula;
+    \item identify good controls, mediators, and bad controls;
+    \item explain matching, common support, propensity scores, and IPW;
+    \item explain why grouped regressions often need cell-size weights;
+    \item discuss OLS, probit, and logit for limited dependent variables;
+    \item explain why conditional-on-positive effects may not be causal.
+\end{itemize}
+
+\section{Practice Questions}
+
+\begin{enumerate}
+    \item Define the CEF and give an example using wages and schooling.
+    \item Prove that \(Y_i-\E[Y_i\mid X_i]\) has conditional mean zero given
+    \(X_i\).
+    \item State the law of iterated expectations and explain it in words.
+    \item Define the population regression coefficient as a minimization
+    problem.
+    \item Why does orthogonality of OLS residuals not imply causality?
+    \item Explain regression anatomy in one sentence.
+    \item What does conditional independence mean?
+    \item Under CIA, why can treated and untreated units with the same \(X\) be
+    compared?
+    \item Give an example where ATE and ATT differ.
+    \item Derive the omitted-variable-bias formula for one omitted variable.
+    \item Give the sign of OVB when the omitted variable raises the outcome and
+    is more common among treated units.
+    \item What makes a control a bad control?
+    \item Why can controlling for a mediator be wrong if the target is the total
+    effect?
+    \item Explain common support.
+    \item State the propensity-score theorem.
+    \item Why is high treatment-prediction accuracy not necessarily good for a
+    propensity-score design?
+    \item Write the IPW formula for the ATE and explain the weights.
+    \item When should grouped regressions be weighted by cell size?
+    \item Why can OLS be useful for a binary outcome?
+    \item Why are conditional-on-positive outcome regressions often hard to
+    interpret causally?
+\end{enumerate}
+
+\end{document}

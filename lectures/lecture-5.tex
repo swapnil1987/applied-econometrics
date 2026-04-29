@@ -1,0 +1,1111 @@
+\documentclass[11pt,aspectratio=169]{beamer}
+\usetheme{SimplePlus}
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath,amssymb,mathtools}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{appendixnumberbeamer}
+\usepackage{hyperref}
+
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\Prob}{\mathbb{P}}
+\newcommand{\Var}{\mathrm{Var}}
+\newcommand{\Cov}{\mathrm{Cov}}
+\newcommand{\plim}{\mathop{\mathrm{plim}}}
+\newcommand{\ATE}{\mathrm{ATE}}
+\newcommand{\LATE}{\mathrm{LATE}}
+\newcommand{\ITT}{\mathrm{ITT}}
+\newcommand{\indep}{\perp\!\!\!\perp}
+\newcommand{\derivbutton}[1]{\vspace{0.4em}\hfill\hyperlink{app:#1}{\beamerbutton{Appendix details}}}
+\newcommand{\backbutton}[1]{\vspace{0.4em}\hfill\hyperlink{main:#1}{\beamerbutton{Back to main slide}}}
+
+\title{Applied Econometrics: Session 5}
+\subtitle{Instrumental Variables, Non-Compliance, and LATE}
+\author{PhD Intensive Course}
+\institute{Lecture 5}
+\date{\today}
+
+\begin{document}
+
+\begin{frame}
+  \titlepage
+\end{frame}
+
+\begin{frame}{Why This Lecture Matters}
+  Lectures 1--4 taught one recurring lesson: comparisons are causal only when the missing counterfactual is credible.
+  \vspace{0.4em}
+
+  Today we study a different route to credibility:
+  \begin{block}{Core idea}
+    Use a variable \(Z_i\) that shifts treatment \(D_i\), but is otherwise unrelated to potential outcomes.
+  \end{block}
+
+  \begin{itemize}
+    \item \(D_i\) may be selected on unobserved ability, preferences, income, or health.
+    \item \(Z_i\) supplies cleaner variation in \(D_i\).
+    \item The price is that IV estimates a special effect: often the effect for compliers.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Roadmap for Today}
+  \tableofcontents
+\end{frame}
+
+\section{Why IV?}
+
+\begin{frame}{The Problem: A Hidden Confounder}
+  Suppose we want the effect of schooling on wages:
+  \[
+    Y_i = \alpha + \beta D_i + u_i,
+  \]
+  where \(Y_i\) is log wage and \(D_i\) is years of schooling.
+
+  \begin{itemize}
+    \item If ability is omitted, it is inside \(u_i\).
+    \item Ability likely affects both schooling and wages.
+    \item Then \(\Cov(D_i,u_i)\neq 0\), so OLS does not isolate \(\beta\).
+  \end{itemize}
+
+  \begin{block}{Translation}
+    We are comparing people with different education, but also different unobserved traits.
+  \end{block}
+\end{frame}
+
+\begin{frame}{Why More Controls May Not Save Us}
+  The ideal long regression is
+  \[
+    Y_i = \alpha + \beta D_i + W_i'\gamma + \varepsilon_i,
+    \qquad
+    \E[\varepsilon_i\mid D_i,W_i]=0.
+  \]
+  But sometimes \(W_i\) is missing or badly measured.
+
+  \begin{itemize}
+    \item Ability, motivation, parental inputs, and networks are hard to observe.
+    \item Proxy controls can reduce bias, but they rarely remove it mechanically.
+    \item IV asks for a different object: a source of variation in \(D_i\) that is not chosen by the individual.
+  \end{itemize}
+
+  \begin{block}{Practical lesson}
+    IV is not a better regression control. It is a design argument about where treatment variation comes from.
+  \end{block}
+\end{frame}
+
+\begin{frame}{The IV Picture}
+  Think of three variables:
+  \[
+    Z_i \longrightarrow D_i \longrightarrow Y_i.
+  \]
+  A valid instrument has two roles:
+  \begin{enumerate}
+    \item It moves treatment: \(Z_i\) changes \(D_i\).
+    \item It is clean: \(Z_i\) has no other route to \(Y_i\).
+  \end{enumerate}
+
+  \vspace{0.3em}
+  A hidden confounder \(U_i\) may still affect both \(D_i\) and \(Y_i\):
+  \[
+    U_i \longrightarrow D_i,
+    \qquad
+    U_i \longrightarrow Y_i.
+  \]
+
+  \begin{block}{IV logic}
+    We do not need \(D_i\) to be as good as random. We need the part of \(D_i\) caused by \(Z_i\) to be as good as random.
+  \end{block}
+\end{frame}
+
+\begin{frame}{Examples of Instruments}
+  \begin{itemize}
+    \item \textbf{Quarter of birth and schooling:} compulsory schooling laws make school-leaving age depend slightly on birth timing.
+    \item \textbf{Draft lottery and military service:} random lottery number changes the probability of service.
+    \item \textbf{Random offer and program take-up:} an encouragement changes who joins a program.
+    \item \textbf{Distance to college and education:} proximity can reduce cost of schooling, but exclusion is controversial.
+  \end{itemize}
+
+  \begin{block}{Student warning}
+    ``A variable that predicts treatment'' is not enough. Many predictors of treatment are also predictors of potential outcomes.
+  \end{block}
+\end{frame}
+
+\begin{frame}{Instrument or Control?}
+  A control variable is something we condition on.
+  \[
+    Y_i = \alpha + \beta D_i + X_i'\gamma + e_i.
+  \]
+  An instrument is something we use to generate treatment variation.
+  \[
+    D_i = \pi_0 + \pi_1 Z_i + X_i'\pi_2 + v_i.
+  \]
+
+  \begin{itemize}
+    \item Controls block back-door paths from \(D_i\) to \(Y_i\).
+    \item Instruments create front-door-like variation from \(Z_i\) to \(D_i\).
+    \item You can use controls inside an IV design, but the identifying variation still comes from \(Z_i\).
+  \end{itemize}
+\end{frame}
+
+\section{Valid Instruments}
+
+\begin{frame}{Notation for the Basic IV Model}
+  \hypertarget{main:iv-conditions}{}
+  Start with
+  \[
+    Y_i = \alpha + \beta D_i + u_i,
+    \qquad
+    \Cov(D_i,u_i)\neq 0.
+  \]
+  We observe an instrument \(Z_i\).
+
+  \begin{block}{Three core conditions}
+    \begin{enumerate}
+      \item \textbf{Relevance:} \(\Cov(Z_i,D_i)\neq 0\).
+      \item \textbf{Independence:} \(Z_i\) is as good as randomly assigned relative to potential outcomes and unobservables.
+      \item \textbf{Exclusion:} \(Z_i\) affects \(Y_i\) only through \(D_i\).
+    \end{enumerate}
+  \end{block}
+
+  \derivbutton{iv-moment}
+\end{frame}
+
+\begin{frame}{Condition 1: Relevance}
+  Relevance means the instrument changes treatment:
+  \[
+    \Cov(Z_i,D_i)\neq 0.
+  \]
+
+  Estimate the first stage:
+  \[
+    D_i = \pi_0 + \pi_1 Z_i + r_i.
+  \]
+
+  \begin{itemize}
+    \item If \(\pi_1=0\), the instrument gives no information about treatment.
+    \item If \(\pi_1\) is tiny, IV estimates are unstable and noisy.
+    \item Relevance can be checked in the data.
+  \end{itemize}
+
+  \begin{block}{Classroom phrase}
+    The first stage asks: does the instrument actually move the treatment?
+  \end{block}
+\end{frame}
+
+\begin{frame}{Condition 2: Independence}
+  Independence means \(Z_i\) is not chosen because of the same unobserved forces that determine \(Y_i\).
+
+  A strong version is
+  \[
+    Z_i \indep \{Y_i(d),D_i(z): d,z\in\{0,1\}\}.
+  \]
+
+  \begin{itemize}
+    \item Random assignment of encouragement often makes this plausible.
+    \item Institutional rules can make this plausible, but not automatic.
+    \item Balance checks help detect problems, but cannot prove independence.
+  \end{itemize}
+
+  \begin{block}{Interpretation}
+    Independence is about who gets the instrument, not who gets the treatment.
+  \end{block}
+\end{frame}
+
+\begin{frame}{Condition 3: Exclusion Restriction}
+  Exclusion says the instrument has no direct effect on the outcome.
+  \[
+    Z_i \rightarrow D_i \rightarrow Y_i,
+    \qquad
+    \text{but not}
+    \qquad
+    Z_i \rightarrow Y_i.
+  \]
+
+  In potential-outcome notation:
+  \[
+    Y_i(d,z)=Y_i(d)
+    \quad \text{for all } d,z.
+  \]
+
+  \begin{itemize}
+    \item A schooling instrument must not affect wages except through schooling.
+    \item A program encouragement must not affect outcomes through information, attention, or stigma except through participation.
+    \item Exclusion is usually argued from institutional knowledge, not tested directly.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{What Can Be Tested?}
+  \begin{center}
+  \begin{tabular}{p{0.28\linewidth}p{0.26\linewidth}p{0.34\linewidth}}
+    \toprule
+    Requirement & Data check? & What to do in practice \\
+    \midrule
+    Relevance & Yes & Report first-stage coefficient and \(F\)-statistic \\
+    Independence & Partly & Check balance on pre-treatment covariates \\
+    Exclusion & No direct test & Defend the institutional story; discuss threats \\
+    Monotonicity & Usually no direct test & Argue no one moves opposite to the instrument \\
+    \bottomrule
+  \end{tabular}
+  \end{center}
+
+  \begin{block}{Exam point}
+    A significant first stage does not validate the instrument. It validates only one required condition.
+  \end{block}
+\end{frame}
+
+\begin{frame}{Bad Instruments: Common Failure Modes}
+  \begin{itemize}
+    \item \textbf{Weak instrument:} \(Z_i\) barely moves \(D_i\).
+    \item \textbf{Direct effect:} \(Z_i\) affects \(Y_i\) through a path other than treatment.
+    \item \textbf{Selection into instrument:} people with different potential outcomes are more likely to receive \(Z_i\).
+    \item \textbf{Multiple treatments:} \(Z_i\) changes several behaviors, not just the named treatment.
+  \end{itemize}
+
+  \begin{block}{Practical rule}
+    Always write the story as a causal graph in words. If you cannot explain the path from \(Z_i\) to \(D_i\) and rule out other paths to \(Y_i\), do not trust IV.
+  \end{block}
+\end{frame}
+
+\section{Wald IV}
+
+\begin{frame}{The First Stage}
+  \hypertarget{main:first-stage}{}
+  The first stage estimates how treatment changes with the instrument:
+  \[
+    D_i = \pi_0 + \pi_1 Z_i + r_i.
+  \]
+  For binary \(Z_i\),
+  \[
+    \pi_1 = \E[D_i\mid Z_i=1]-\E[D_i\mid Z_i=0].
+  \]
+
+  \begin{itemize}
+    \item If \(D_i\) is schooling, the first stage is extra years of schooling caused by \(Z_i\).
+    \item If \(D_i\) is program take-up, the first stage is the compliance rate induced by assignment.
+  \end{itemize}
+
+  \begin{block}{Units}
+    First stage has units of treatment per unit of instrument.
+  \end{block}
+\end{frame}
+
+\begin{frame}{The Reduced Form}
+  The reduced form estimates how the outcome changes with the instrument:
+  \[
+    Y_i = \rho_0 + \rho_1 Z_i + \eta_i.
+  \]
+  For binary \(Z_i\),
+  \[
+    \rho_1 = \E[Y_i\mid Z_i=1]-\E[Y_i\mid Z_i=0].
+  \]
+
+  \begin{itemize}
+    \item The reduced form is an effect of the instrument on the outcome.
+    \item Under exclusion, that effect must operate through treatment.
+    \item It is often called an intention-to-treat effect in encouragement designs.
+  \end{itemize}
+
+  \begin{block}{Units}
+    Reduced form has units of outcome per unit of instrument.
+  \end{block}
+\end{frame}
+
+\begin{frame}{The Wald Estimator}
+  \hypertarget{main:wald}{}
+  If \(Z_i\) is binary, the IV estimator is the ratio:
+  \[
+    \hat{\beta}_{Wald}
+    =
+    \frac{\bar{Y}_{Z=1}-\bar{Y}_{Z=0}}
+         {\bar{D}_{Z=1}-\bar{D}_{Z=0}}.
+  \]
+
+  Equivalently,
+  \[
+    \beta_{IV}
+    =
+    \frac{\Cov(Y_i,Z_i)}{\Cov(D_i,Z_i)}
+    =
+    \frac{\text{reduced form}}{\text{first stage}}.
+  \]
+
+  \begin{block}{Intuition}
+    Convert the effect of the instrument on the outcome into outcome units per one unit of treatment.
+  \end{block}
+
+  \derivbutton{wald-proof}
+\end{frame}
+
+\begin{frame}{A Numerical Wald Example}
+  Suppose assignment to a tutoring offer changes tutoring take-up and exam scores:
+  \begin{center}
+  \begin{tabular}{lcc}
+    \toprule
+    & Z=1 & Z=0 \\
+    \midrule
+    \(\E[D\mid Z]\) & 0.70 & 0.30 \\
+    \(\E[Y\mid Z]\) & 74 & 70 \\
+    \bottomrule
+  \end{tabular}
+  \end{center}
+
+  First stage:
+  \[
+    0.70-0.30=0.40.
+  \]
+  Reduced form:
+  \[
+    74-70=4.
+  \]
+  Wald IV:
+  \[
+    \frac{4}{0.40}=10.
+  \]
+
+  Interpretation: among the students whose tutoring status was changed by the offer, tutoring raised scores by 10 points.
+\end{frame}
+
+\begin{frame}{Why the Ratio Makes Sense}
+  Imagine the offer raises average test scores by 4 points.
+
+  \begin{itemize}
+    \item But only 40 percentage points of students change tutoring status because of the offer.
+    \item The observed 4-point difference is diluted by students whose treatment did not change.
+    \item Dividing by 0.40 undilutes the assignment effect into a treatment effect.
+  \end{itemize}
+
+  \begin{block}{Careful language}
+    This is not the effect for everyone unless treatment effects are constant or the complier effect equals the population effect.
+  \end{block}
+\end{frame}
+
+\begin{frame}{IV with Controls}
+  In many applications we include controls \(X_i\):
+  \[
+    Y_i = \alpha + \beta D_i + X_i'\gamma + u_i.
+  \]
+  The instrument must be valid conditional on those controls.
+
+  \begin{itemize}
+    \item First stage: regress \(D_i\) on \(Z_i\) and \(X_i\).
+    \item Reduced form: regress \(Y_i\) on \(Z_i\) and \(X_i\).
+    \item IV ratio uses the residual variation in \(Z_i\) after removing \(X_i\).
+  \end{itemize}
+
+  \begin{block}{Rule}
+    Any exogenous control in the outcome equation belongs in the first stage too.
+  \end{block}
+
+  \derivbutton{controls-proof}
+\end{frame}
+
+\section{2SLS}
+
+\begin{frame}{Two-Stage Least Squares: Stage 1}
+  \hypertarget{main:2sls}{}
+  Stage 1 predicts treatment using the instrument and controls:
+  \[
+    D_i = \pi_0 + \pi_1 Z_i + X_i'\pi_2 + r_i.
+  \]
+  Get fitted values:
+  \[
+    \hat{D}_i = \hat{\pi}_0 + \hat{\pi}_1 Z_i + X_i'\hat{\pi}_2.
+  \]
+
+  \begin{itemize}
+    \item \(\hat{D}_i\) is the part of treatment explained by \(Z_i\) and \(X_i\).
+    \item The key identifying variation in \(\hat{D}_i\) comes from \(Z_i\).
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Two-Stage Least Squares: Stage 2}
+  Stage 2 regresses the outcome on predicted treatment and controls:
+  \[
+    Y_i = \alpha + \beta \hat{D}_i + X_i'\gamma + \text{error}_i.
+  \]
+
+  \begin{itemize}
+    \item The coefficient on \(\hat{D}_i\) is the 2SLS estimate.
+    \item With one endogenous variable and one instrument, it equals the Wald ratio after residualizing controls.
+    \item Software must compute the standard errors; manual second-stage OLS standard errors are wrong.
+  \end{itemize}
+
+  \derivbutton{2sls-proof}
+\end{frame}
+
+\begin{frame}{What 2SLS Is Doing Geometrically}
+  OLS uses all variation in \(D_i\):
+  \[
+    D_i = \text{clean variation} + \text{confounded variation}.
+  \]
+  2SLS keeps the variation in \(D_i\) that is explained by the instrument:
+  \[
+    \hat{D}_i = \mathrm{Projection}(D_i \mid Z_i,X_i).
+  \]
+
+  \begin{block}{Intuition}
+    If \(Z_i\) is clean, then the instrument-generated part of treatment is clean.
+  \end{block}
+
+  \begin{itemize}
+    \item 2SLS does not make every treated and untreated person comparable.
+    \item It compares people whose treatment differs because of \(Z_i\).
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Multiple Instruments}
+  If there are several instruments \(Z_i=(Z_{1i},Z_{2i},\ldots,Z_{ki})\), stage 1 is
+  \[
+    D_i = \pi_0 + Z_i'\pi_1 + X_i'\pi_2 + r_i.
+  \]
+
+  \begin{itemize}
+    \item Multiple instruments can strengthen prediction of treatment.
+    \item They also multiply the number of exclusion restrictions to defend.
+    \item With too many weak or questionable instruments, 2SLS can move toward the biased OLS estimate.
+  \end{itemize}
+
+  \begin{block}{Practical rule}
+    More instruments are not automatically better. Each instrument needs its own validity argument.
+  \end{block}
+\end{frame}
+
+\begin{frame}{Do Not Run IV by Hand for Inference}
+  Manually running the two regressions is useful for intuition:
+  \[
+    D_i \rightarrow \hat{D}_i,
+    \qquad
+    Y_i \text{ on } \hat{D}_i.
+  \]
+  But the second-stage residuals are not ordinary OLS residuals.
+
+  \begin{itemize}
+    \item The second stage uses an estimated regressor.
+    \item Naive OLS standard errors ignore first-stage uncertainty.
+    \item Use an IV/2SLS routine for final tables.
+  \end{itemize}
+
+  \begin{block}{For this course}
+    By hand for understanding; proper IV software for reported inference.
+  \end{block}
+\end{frame}
+
+\section{Weak Instruments}
+
+\begin{frame}{Weak Instruments}
+  \hypertarget{main:weak}{}
+  A weak instrument has a small first stage:
+  \[
+    D_i = \pi_0 + \pi_1 Z_i + r_i,
+    \qquad
+    \pi_1 \approx 0.
+  \]
+
+  \begin{itemize}
+    \item The denominator of the IV ratio is small.
+    \item Small sampling noise in the reduced form gets magnified.
+    \item Confidence intervals become wide and conventional approximations can be misleading.
+  \end{itemize}
+
+  \begin{block}{Visual intuition}
+    Weak IV is like estimating a slope by dividing by a nearly flat first-stage line.
+  \end{block}
+
+  \derivbutton{weak-proof}
+\end{frame}
+
+\begin{frame}{The First-Stage \(F\)-Statistic}
+  For one endogenous treatment, a common diagnostic is the first-stage \(F\)-statistic on the excluded instruments.
+
+  \begin{itemize}
+    \item Very small \(F\): the instrument barely shifts treatment.
+    \item Larger \(F\): more information about treatment from the instrument.
+    \item A classic rule of thumb is \(F>10\), but it is not a theorem of validity.
+  \end{itemize}
+
+  \begin{block}{Important distinction}
+    Strong first stage helps precision and weak-IV bias. It does not prove exclusion or independence.
+  \end{block}
+\end{frame}
+
+\begin{frame}{Weak-IV Symptoms}
+  In empirical work, weak instruments often produce:
+  \begin{itemize}
+    \item large standard errors,
+    \item estimates that change a lot across specifications,
+    \item implausibly large point estimates from tiny first stages,
+    \item IV estimates drifting toward OLS in finite samples,
+    \item confidence intervals that are not trustworthy under standard approximations.
+  \end{itemize}
+
+  \begin{block}{Practical response}
+    Report the first stage clearly, show robustness, and be honest if the design has little treatment variation.
+  \end{block}
+\end{frame}
+
+\begin{frame}{What IV Does Not Fix}
+  IV does not solve every causal problem.
+
+  \begin{itemize}
+    \item It does not fix a bad exclusion restriction.
+    \item It does not identify effects for people whose treatment is unaffected by the instrument.
+    \item It does not make finite samples behave like large samples.
+    \item It does not remove the need for a clear research question.
+  \end{itemize}
+
+  \begin{block}{Bottom line}
+    IV trades one impossible requirement, observing all confounders, for another demanding requirement, finding valid instrument variation.
+  \end{block}
+\end{frame}
+
+\section{Non-Compliance}
+
+\begin{frame}{Assignment Versus Treatment Received}
+  \hypertarget{main:noncompliance}{}
+  Many experiments randomize an assignment \(Z_i\), but people do not perfectly follow it.
+
+  \[
+    Z_i = \text{assigned treatment},
+    \qquad
+    D_i = \text{received treatment}.
+  \]
+
+  \begin{itemize}
+    \item Some assigned to treatment do not take it.
+    \item Some assigned to control may obtain treatment anyway.
+    \item Randomization applies to \(Z_i\), not necessarily to \(D_i\).
+  \end{itemize}
+
+  \begin{block}{Key shift}
+    With non-compliance, random assignment becomes an instrument for treatment received.
+  \end{block}
+\end{frame}
+
+\begin{frame}{Why Not Just Compare by Treatment Received?}
+  Comparing \(Y_i\) by received treatment \(D_i\) can reintroduce selection:
+  \[
+    \E[Y_i\mid D_i=1]-\E[Y_i\mid D_i=0].
+  \]
+
+  \begin{itemize}
+    \item People who comply may be richer, healthier, more motivated, or more informed.
+    \item People who refuse treatment may differ in unobserved baseline outcomes.
+    \item Treatment received is partly chosen, even if assignment was random.
+  \end{itemize}
+
+  \begin{block}{Example}
+    If only users with new phones can receive a push notification, comparing delivered versus not delivered also compares richer versus poorer users.
+  \end{block}
+\end{frame}
+
+\begin{frame}{Intention-to-Treat}
+  Comparing by assignment is still causal:
+  \[
+    \ITT_Y
+    =
+    \E[Y_i\mid Z_i=1]-\E[Y_i\mid Z_i=0].
+  \]
+
+  \begin{itemize}
+    \item This is the causal effect of being assigned or encouraged.
+    \item It is often policy-relevant: what happens if we send offers?
+    \item But it is diluted when many assigned people do not take treatment.
+  \end{itemize}
+
+  \begin{block}{Question}
+    If we want the effect of actually receiving treatment, how do we undo the dilution?
+  \end{block}
+\end{frame}
+
+\begin{frame}{Compliance Types}
+  Define potential treatment received:
+  \[
+    D_i(1)=\text{treatment if assigned},
+    \qquad
+    D_i(0)=\text{treatment if not assigned}.
+  \]
+
+  \begin{center}
+  \begin{tabular}{lccp{0.36\linewidth}}
+    \toprule
+    Type & \(D_i(1)\) & \(D_i(0)\) & Meaning \\
+    \midrule
+    Complier & 1 & 0 & follows assignment \\
+    Never-taker & 0 & 0 & never takes treatment \\
+    Always-taker & 1 & 1 & always takes treatment \\
+    Defier & 0 & 1 & does the opposite of assignment \\
+    \bottomrule
+  \end{tabular}
+  \end{center}
+\end{frame}
+
+\begin{frame}{Which Types Move the First Stage?}
+  The first-stage effect of assignment on treatment is
+  \[
+    \E[D_i\mid Z_i=1]-\E[D_i\mid Z_i=0].
+  \]
+
+  Under random assignment, this equals
+  \[
+    \E[D_i(1)-D_i(0)].
+  \]
+
+  \begin{itemize}
+    \item Compliers contribute \(1-0=1\).
+    \item Never-takers contribute \(0-0=0\).
+    \item Always-takers contribute \(1-1=0\).
+    \item Defiers contribute \(0-1=-1\).
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Monotonicity}
+  \hypertarget{main:monotonicity}{}
+  Monotonicity rules out defiers:
+  \[
+    D_i(1)\geq D_i(0)
+    \quad \text{for every } i.
+  \]
+
+  \begin{itemize}
+    \item Assignment can encourage treatment, or do nothing.
+    \item It cannot make someone less likely to take treatment.
+    \item This is often plausible for offers, eligibility, reminders, or draft risk.
+  \end{itemize}
+
+  \begin{block}{Why it matters}
+    Without monotonicity, positive and negative first-stage responses can cancel, and the IV ratio is hard to interpret.
+  \end{block}
+\end{frame}
+
+\section{LATE}
+
+\begin{frame}{Local Average Treatment Effect}
+  \hypertarget{main:late}{}
+  Under independence, exclusion, relevance, and monotonicity:
+  \[
+    \frac{\E[Y_i\mid Z_i=1]-\E[Y_i\mid Z_i=0]}
+         {\E[D_i\mid Z_i=1]-\E[D_i\mid Z_i=0]}
+    =
+    \E[Y_i(1)-Y_i(0)\mid D_i(1)>D_i(0)].
+  \]
+
+  \begin{block}{Name}
+    This is the Local Average Treatment Effect, or LATE: the average treatment effect for compliers.
+  \end{block}
+
+  \derivbutton{late-proof}
+\end{frame}
+
+\begin{frame}{Why IV Identifies Compliers}
+  The instrument only reveals treatment effects for people whose treatment status changes when \(Z_i\) changes.
+
+  \begin{itemize}
+    \item Never-takers are untreated regardless of assignment.
+    \item Always-takers are treated regardless of assignment.
+    \item Compliers switch treatment status when assignment changes.
+  \end{itemize}
+
+  \begin{block}{Core intuition}
+    If the instrument does not change your treatment, your treatment effect cannot show up in the IV numerator.
+  \end{block}
+\end{frame}
+
+\begin{frame}{LATE Is Not Automatically ATE}
+  The ATE is
+  \[
+    \ATE=\E[Y_i(1)-Y_i(0)].
+  \]
+  LATE is
+  \[
+    \LATE=\E[Y_i(1)-Y_i(0)\mid \text{complier}].
+  \]
+
+  \begin{itemize}
+    \item If treatment effects are constant, LATE equals ATE.
+    \item If treatment effects differ by compliance type, LATE may be far from ATE.
+    \item The IV estimate is internally valid for the complier group identified by that instrument.
+  \end{itemize}
+
+  \begin{block}{External validity question}
+    Are the compliers the people policy makers care about?
+  \end{block}
+\end{frame}
+
+\begin{frame}{Interpreting Compliers}
+  Compliers are defined relative to the instrument.
+
+  \begin{itemize}
+    \item With a tuition subsidy, compliers are students induced to enroll by the subsidy.
+    \item With quarter of birth, compliers are people whose schooling changes because school-entry and leaving rules bind.
+    \item With a push notification assignment, compliers are users who receive the push only when assigned.
+  \end{itemize}
+
+  \begin{block}{Important}
+    Different instruments for the same treatment can estimate different LATEs.
+  \end{block}
+\end{frame}
+
+\begin{frame}{A Non-Compliance Numeric Example}
+  Suppose an online course randomly offers free tutoring.
+
+  \begin{center}
+  \begin{tabular}{lcc}
+    \toprule
+    & Z=1 & Z=0 \\
+    \midrule
+    \(\E[D\mid Z]\) & 0.60 & 0.10 \\
+    \(\E[Y\mid Z]\) & 82 & 77 \\
+    \bottomrule
+  \end{tabular}
+  \end{center}
+
+  \[
+    \ITT_D = 0.60-0.10=0.50,
+    \qquad
+    \ITT_Y = 82-77=5.
+  \]
+  \[
+    \widehat{\LATE}=\frac{\ITT_Y}{\ITT_D}=\frac{5}{0.50}=10.
+  \]
+
+  The offer raises scores by 5 points; tutoring raises scores by 10 points for students induced into tutoring by the offer.
+\end{frame}
+
+\begin{frame}{What To Report in an IV Paper}
+  A credible IV table should not show only the second-stage coefficient.
+
+  \begin{itemize}
+    \item State the instrument and the treatment it shifts.
+    \item Report first-stage coefficient and \(F\)-statistic.
+    \item Report reduced form when useful.
+    \item Explain independence and exclusion in institutional detail.
+    \item State the likely complier population.
+    \item Discuss why LATE is or is not the policy-relevant estimand.
+  \end{itemize}
+\end{frame}
+
+\section{Simulation}
+
+\begin{frame}{Python Example for This Lecture}
+  The script for this lecture is:
+  \[
+    \texttt{lectures/code/lecture-5-iv-late.py}.
+  \]
+
+  It simulates four lessons:
+  \begin{enumerate}
+    \item OLS is biased when treatment is correlated with an omitted variable.
+    \item IV recovers the treatment effect when the instrument is valid and strong.
+    \item Weak first stages make IV estimates unstable.
+    \item With non-compliance, Wald IV recovers LATE for compliers.
+  \end{enumerate}
+
+  \begin{block}{Why simulation helps}
+    We know the true data-generating process, so students can see which estimator fails and why.
+  \end{block}
+\end{frame}
+
+\begin{frame}{Simulation Design: Endogeneity and IV}
+  The script generates
+  \[
+    U_i \sim N(0,1),
+    \qquad
+    Z_i \sim \text{Bernoulli}(1/2),
+  \]
+  \[
+    D_i = 0.8Z_i + 0.7U_i + v_i,
+  \]
+  \[
+    Y_i = 2D_i + 1.5U_i + e_i.
+  \]
+
+  \begin{itemize}
+    \item True treatment effect is 2.
+    \item OLS is biased because \(D_i\) contains \(U_i\).
+    \item IV uses only the variation in \(D_i\) caused by \(Z_i\).
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Simulation Design: Non-Compliance}
+  For LATE, the script creates compliance types:
+  \[
+  (D_i(1),D_i(0))\in\{(1,0),(0,0),(1,1)\}.
+  \]
+
+  \begin{itemize}
+    \item Compliers follow assignment.
+    \item Never-takers never receive treatment.
+    \item Always-takers receive treatment regardless of assignment.
+    \item No defiers are generated, so monotonicity holds.
+  \end{itemize}
+
+  Treatment effects are heterogeneous, so the complier effect differs from the population ATE.
+\end{frame}
+
+\section{Review}
+
+\begin{frame}{What Students Must Remember}
+  \begin{enumerate}
+    \item IV is for endogeneity from unobserved confounding, reverse causality, or measurement error.
+    \item A valid instrument must be relevant, independent, and excluded from the outcome equation.
+    \item Wald IV is reduced form divided by first stage.
+    \item 2SLS operationalizes the same idea with controls and multiple instruments.
+    \item Weak instruments are dangerous even when exclusion is conceptually plausible.
+    \item With non-compliance and monotonicity, IV estimates LATE for compliers.
+  \end{enumerate}
+\end{frame}
+
+\begin{frame}{Common Exam Mistakes}
+  \begin{itemize}
+    \item Saying ``\(Z\) is correlated with \(Y\), so it is a good instrument''.
+    \item Forgetting that \(Z\) must move \(D\), not just predict \(Y\).
+    \item Treating exclusion as a statistical test.
+    \item Interpreting LATE as the ATE for everyone.
+    \item Ignoring the first stage.
+    \item Using treatment received as if it were randomized in a non-compliance setting.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Source and Further Reading}
+  This lecture is based on ideas from:
+  \begin{itemize}
+    \item Matheus Facure Alves, \emph{Causal Inference for the Brave and True}, Chapter 08, ``Instrumental Variables''.
+    \item Matheus Facure Alves, \emph{Causal Inference for the Brave and True}, Chapter 09, ``Non Compliance and LATE''.
+    \item Angrist and Pischke, \emph{Mostly Harmless Econometrics}.
+    \item Angrist and Pischke, \emph{Mastering 'Metrics}.
+  \end{itemize}
+
+  \vspace{0.3em}
+  Handbook URLs:
+  \begin{itemize}
+    \item \url{https://matheusfacure.github.io/python-causality-handbook/08-Instrumental-Variables.html}
+    \item \url{https://matheusfacure.github.io/python-causality-handbook/09-Non-Compliance-and-LATE.html}
+  \end{itemize}
+\end{frame}
+
+\appendix
+
+\begin{frame}{Appendix Map}
+  \begin{itemize}
+    \item A1: IV moment condition from the structural equation
+    \item A2: Wald estimator derivation
+    \item A3: 2SLS projection formula
+    \item A4: IV with controls by residualizing
+    \item A5: Why weak instruments inflate variance
+    \item A6: LATE derivation under monotonicity
+    \item A7: Compliance shares from first-stage moments
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Appendix A1: IV Moment Condition}
+  \hypertarget{app:iv-moment}{}
+  \small
+  Start from the structural equation
+  \[
+    Y_i = \alpha + \beta D_i + u_i.
+  \]
+  OLS fails when
+  \[
+    \E[D_i u_i]\neq 0.
+  \]
+  A valid instrument satisfies
+  \[
+    \E[Z_i u_i]=0,
+    \qquad
+    \E[Z_iD_i]\neq 0
+  \]
+  after demeaning or after including an intercept.
+
+  Multiply the structural equation by \(Z_i\) and take expectations:
+  \[
+    \E[Z_iY_i]=\alpha\E[Z_i]+\beta\E[Z_iD_i]+\E[Z_iu_i].
+  \]
+  With de-meaned variables, \(\E[Z_i]=0\) and \(\E[Z_iu_i]=0\), so
+  \[
+    \beta=\frac{\E[Z_iY_i]}{\E[Z_iD_i]}.
+  \]
+  \backbutton{iv-conditions}
+\end{frame}
+
+\begin{frame}{Appendix A2: Wald Estimator}
+  \hypertarget{app:wald-proof}{}
+  For a binary instrument,
+  \[
+    \Cov(Y_i,Z_i)
+    =
+    \Prob(Z_i=1)\Prob(Z_i=0)
+    \left(\E[Y_i\mid Z_i=1]-\E[Y_i\mid Z_i=0]\right).
+  \]
+  Similarly,
+  \[
+    \Cov(D_i,Z_i)
+    =
+    \Prob(Z_i=1)\Prob(Z_i=0)
+    \left(\E[D_i\mid Z_i=1]-\E[D_i\mid Z_i=0]\right).
+  \]
+  Therefore the probability factor cancels:
+  \[
+    \frac{\Cov(Y_i,Z_i)}{\Cov(D_i,Z_i)}
+    =
+    \frac{\E[Y_i\mid Z_i=1]-\E[Y_i\mid Z_i=0]}
+         {\E[D_i\mid Z_i=1]-\E[D_i\mid Z_i=0]}.
+  \]
+  \backbutton{wald}
+\end{frame}
+
+\begin{frame}{Appendix A3: 2SLS Projection Formula}
+  \hypertarget{app:2sls-proof}{}
+  \small
+  Let \(X\) include exogenous controls and the intercept, \(D\) be the endogenous treatment, and \(Z\) include excluded instruments plus \(X\).
+
+  The first-stage projection matrix is
+  \[
+    P_Z = Z(Z'Z)^{-1}Z'.
+  \]
+  The fitted treatment is
+  \[
+    \hat{D}=P_ZD.
+  \]
+  The 2SLS coefficient on \(D\) can be written as
+  \[
+    \hat{\beta}_{2SLS}
+    =
+    (D'P_ZM_XD)^{-1}D'P_ZM_XY,
+  \]
+  where \(M_X\) removes the included exogenous controls.
+
+  In the just-identified no-control case, this collapses to
+  \[
+    \hat{\beta}_{2SLS}
+    =
+    \frac{Z'Y}{Z'D},
+  \]
+  after demeaning.
+  \backbutton{2sls}
+\end{frame}
+
+\begin{frame}{Appendix A4: IV with Controls}
+  \hypertarget{app:controls-proof}{}
+  Suppose the model is
+  \[
+    Y_i = \alpha + \beta D_i + X_i'\gamma + u_i.
+  \]
+  Let \(\tilde{Y}_i\), \(\tilde{D}_i\), and \(\tilde{Z}_i\) be residuals from separate regressions of \(Y_i\), \(D_i\), and \(Z_i\) on \(X_i\).
+
+  By Frisch-Waugh-Lovell, the controlled IV estimand is
+  \[
+    \beta_{IV\mid X}
+    =
+    \frac{\Cov(\tilde{Z}_i,\tilde{Y}_i)}
+         {\Cov(\tilde{Z}_i,\tilde{D}_i)}.
+  \]
+
+  \begin{itemize}
+    \item The numerator is the reduced form after removing \(X_i\).
+    \item The denominator is the first stage after removing \(X_i\).
+    \item The instrument must be valid conditional on \(X_i\).
+  \end{itemize}
+  \backbutton{wald}
+\end{frame}
+
+\begin{frame}{Appendix A5: Weak-IV Variance Intuition}
+  \hypertarget{app:weak-proof}{}
+  \footnotesize
+  In the just-identified de-meaned case,
+  \[
+    \hat{\beta}_{IV}
+    =
+    \frac{\widehat{\Cov}(Z_i,Y_i)}
+         {\widehat{\Cov}(Z_i,D_i)}.
+  \]
+  Let
+  \[
+    \pi = \frac{\Cov(Z_i,D_i)}{\Var(Z_i)}
+  \]
+  be the first-stage slope. When \(\pi\) is close to zero, the denominator is close to zero.
+
+  A rough delta-method approximation gives
+  \[
+    \Var(\hat{\beta}_{IV}) \propto \frac{1}{\pi^2}.
+  \]
+
+  \begin{block}{Consequence}
+    Halving the first-stage strength can roughly quadruple the variance, before considering finite-sample bias.
+  \end{block}
+  \backbutton{weak}
+\end{frame}
+
+\begin{frame}{Appendix A6: LATE Derivation}
+  \hypertarget{app:late-proof}{}
+  Let \(D_i(z)\) be potential treatment under assignment \(z\), and \(Y_i(d)\) potential outcome under treatment \(d\).
+
+  Observed treatment:
+  \[
+    D_i = Z_iD_i(1)+(1-Z_i)D_i(0).
+  \]
+  By exclusion, observed outcome is
+  \[
+    Y_i = Y_i(0)+D_i\{Y_i(1)-Y_i(0)\}.
+  \]
+  By independence,
+  \[
+    \E[Y_i\mid Z_i=1]-\E[Y_i\mid Z_i=0]
+    =
+    \E\left[(D_i(1)-D_i(0))(Y_i(1)-Y_i(0))\right].
+  \]
+  With monotonicity, \(D_i(1)-D_i(0)\in\{0,1\}\), so the numerator equals
+  \[
+    \Prob(\text{complier})\E[Y_i(1)-Y_i(0)\mid \text{complier}].
+  \]
+  \backbutton{late}
+\end{frame}
+
+\begin{frame}{Appendix A6 Continued: Denominator}
+  The first stage is
+  \[
+    \E[D_i\mid Z_i=1]-\E[D_i\mid Z_i=0]
+    =
+    \E[D_i(1)-D_i(0)].
+  \]
+  Under monotonicity,
+  \[
+    \E[D_i(1)-D_i(0)] = \Prob(\text{complier}).
+  \]
+  Therefore
+  \[
+    \frac{\E[Y_i\mid Z_i=1]-\E[Y_i\mid Z_i=0]}
+         {\E[D_i\mid Z_i=1]-\E[D_i\mid Z_i=0]}
+    =
+    \E[Y_i(1)-Y_i(0)\mid \text{complier}].
+  \]
+  \backbutton{late}
+\end{frame}
+
+\begin{frame}{Appendix A7: Compliance Shares}
+  \hypertarget{app:compliance-shares}{}
+  Under random assignment:
+  \[
+    \E[D_i\mid Z_i=1]=\E[D_i(1)],
+    \qquad
+    \E[D_i\mid Z_i=0]=\E[D_i(0)].
+  \]
+
+  If monotonicity holds:
+  \[
+    \E[D_i\mid Z_i=1]-\E[D_i\mid Z_i=0]
+    =
+    \Prob(\text{complier}).
+  \]
+
+  If there are no always-takers, then
+  \[
+    \E[D_i\mid Z_i=0]=0,
+    \qquad
+    \E[D_i\mid Z_i=1]=\Prob(\text{complier}).
+  \]
+
+  If always-takers exist, \(\E[D_i\mid Z_i=0]\) estimates their share.
+  \backbutton{noncompliance}
+\end{frame}
+
+\end{document}

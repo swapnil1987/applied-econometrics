@@ -1,0 +1,1076 @@
+\documentclass[11pt,aspectratio=169]{beamer}
+\usetheme{SimplePlus}
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath,amssymb,mathtools}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{appendixnumberbeamer}
+\usepackage{hyperref}
+
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\Prob}{\mathbb{P}}
+\newcommand{\Var}{\mathrm{Var}}
+\newcommand{\Cov}{\mathrm{Cov}}
+\newcommand{\ATE}{\mathrm{ATE}}
+\newcommand{\ATT}{\mathrm{ATT}}
+\newcommand{\argmin}{\mathop{\mathrm{arg\,min}}}
+\newcommand{\indep}{\perp\!\!\!\perp}
+\newcommand{\derivbutton}[1]{\vspace{0.4em}\hfill\hyperlink{app:#1}{\beamerbutton{Appendix details}}}
+\newcommand{\backbutton}[1]{\vspace{0.4em}\hfill\hyperlink{main:#1}{\beamerbutton{Back to main slide}}}
+
+\title{Applied Econometrics: Session 4}
+\subtitle{Regression, Dummy Variables, Grouped Data, and Controls}
+\author{PhD Intensive Course}
+\institute{Lecture 4}
+\date{\today}
+
+\begin{document}
+
+\begin{frame}
+  \titlepage
+\end{frame}
+
+\begin{frame}{Why This Lecture Matters}
+  Linear regression is the workhorse of applied causal inference.
+  \vspace{0.4em}
+
+  But regression has two very different meanings:
+  \begin{itemize}
+    \item mechanically, it is a best linear summary of conditional means;
+    \item causally, it is valid only when the comparison left inside the coefficient is credible.
+  \end{itemize}
+  \begin{block}{Core question}
+    Which variation in treatment remains after we control for other variables, and is that variation as-good-as-random?
+  \end{block}
+\end{frame}
+
+\begin{frame}{Roadmap for Today}
+  \tableofcontents
+\end{frame}
+
+\section{CEF, OLS, and Causal Regression}
+
+\begin{frame}{Where We Are in the Course}
+  Earlier lectures gave us three ingredients:
+  \begin{itemize}
+    \item potential outcomes define the causal target;
+    \item random assignment removes selection bias by design;
+    \item regression summarizes conditional averages and partial correlations.
+  \end{itemize}
+  \vspace{0.3em}
+  Today we put them together:
+  \begin{block}{Lecture 4 message}
+    Regression adjustment is powerful when it compares treated and untreated units that are comparable after conditioning. It is dangerous when controls create artificial comparisons.
+  \end{block}
+\end{frame}
+
+\begin{frame}{Potential Outcomes Reminder}
+  \hypertarget{main:ate-reminder}{}
+  For each unit \(i\):
+  \[
+    Y_i = Y_{0i} + T_i(Y_{1i}-Y_{0i}), \qquad T_i\in\{0,1\}.
+  \]
+  The average treatment effect is
+  \[
+    \ATE = \E[Y_{1i}-Y_{0i}].
+  \]
+  A simple observed difference satisfies
+  \[
+    \E[Y_i\mid T_i=1]-\E[Y_i\mid T_i=0]
+    =
+    \ATT
+    +
+    \left\{\E[Y_{0i}\mid T_i=1]-\E[Y_{0i}\mid T_i=0]\right\}.
+  \]
+  \begin{itemize}
+    \item The second term is selection bias.
+    \item Regression is useful only if it helps remove or avoid this term.
+  \end{itemize}
+  \derivbutton{ate-reminder}
+\end{frame}
+
+\begin{frame}{Regression with a Treatment Dummy}
+  \hypertarget{main:dummy-diff}{}
+  In a randomized experiment, estimate
+  \[
+    Y_i=\alpha+\tau T_i+u_i.
+  \]
+  Since \(T_i\) is a dummy:
+  \[
+    \E[Y_i\mid T_i=0]=\alpha,\qquad
+    \E[Y_i\mid T_i=1]=\alpha+\tau.
+  \]
+  Therefore
+  \[
+    \tau=\E[Y_i\mid T_i=1]-\E[Y_i\mid T_i=0].
+  \]
+  \begin{block}{Interpretation}
+    With a binary treatment and an intercept, OLS is just a difference in means written in regression language.
+  \end{block}
+  \derivbutton{dummy-diff}
+\end{frame}
+
+\begin{frame}{The Conditional Expectation Function}
+  \hypertarget{main:cef}{}
+  For outcome \(Y_i\) and covariates \(X_i\), define
+  \[
+    m(x)=\E[Y_i\mid X_i=x].
+  \]
+  \begin{itemize}
+    \item The CEF is the average outcome among units with the same covariates.
+    \item It is the best unrestricted prediction of \(Y_i\) using \(X_i\).
+    \item It can be nonlinear, discontinuous, or defined by many cells.
+    \item It is not automatically causal.
+  \end{itemize}
+  \begin{block}{Beginner intuition}
+    If \(X\) is ``years of education'', the CEF asks: among people with exactly \(x\) years, what is the average wage?
+  \end{block}
+  \derivbutton{cef}
+\end{frame}
+
+\begin{frame}{Population OLS}
+  \hypertarget{main:ols-normal}{}
+  Regression chooses the best linear approximation:
+  \[
+    \beta
+    =
+    \argmin_b \E\left[(Y_i-X_i'b)^2\right].
+  \]
+  The first-order condition gives
+  \[
+    \E[X_i(Y_i-X_i'\beta)]=0.
+  \]
+  If \(\E[X_iX_i']\) is invertible,
+  \[
+    \beta=\E[X_iX_i']^{-1}\E[X_iY_i].
+  \]
+  \begin{itemize}
+    \item Orthogonality is a property of the projection.
+    \item It does not say the treatment is randomly assigned.
+  \end{itemize}
+  \derivbutton{ols-normal}
+\end{frame}
+
+\begin{frame}{Regression Anatomy: What Multiple Regression Does}
+  \hypertarget{main:fwl}{}
+  Suppose the regression is
+  \[
+    Y_i=\alpha+\tau T_i+X_i'\gamma+u_i.
+  \]
+  Let \(\tilde T_i\) be the residual from regressing \(T_i\) on \(X_i\) and a constant.
+  Then the coefficient on treatment is
+  \[
+    \tau
+    =
+    \frac{\Cov(Y_i,\tilde T_i)}{\Var(\tilde T_i)}.
+  \]
+  \begin{block}{Intuition}
+    Multiple regression first removes from treatment the part predictable from controls. Then it asks whether the remaining treatment variation predicts the outcome.
+  \end{block}
+  \derivbutton{fwl}
+\end{frame}
+
+\begin{frame}{When Regression Adjustment Is Causal}
+  \hypertarget{main:cia-reg}{}
+  Regression adjustment needs a causal assumption, not only algebra:
+  \[
+    (Y_{0i},Y_{1i})\indep T_i\mid X_i.
+  \]
+  This is conditional independence, or selection on observables.
+  \vspace{0.3em}
+
+  Under this assumption,
+  \[
+    \E[Y_i\mid T_i=1,X_i=x]-\E[Y_i\mid T_i=0,X_i=x]
+    =
+    \E[Y_{1i}-Y_{0i}\mid X_i=x].
+  \]
+  \begin{block}{Meaning}
+    Within each \(X\)-cell, treated and untreated units are comparable in potential outcomes.
+  \end{block}
+  \derivbutton{cia-reg}
+\end{frame}
+
+\begin{frame}{Regression Adjustment in Words}
+  A regression with controls tries to imitate a blocked experiment:
+  \begin{enumerate}
+    \item compare treated and untreated units with the same observed covariates;
+    \item estimate many within-cell treatment differences;
+    \item average those differences using weights implied by the regression.
+  \end{enumerate}
+  \vspace{0.3em}
+  \begin{block}{What regression cannot do}
+    It cannot fix unobserved confounders, bad measurement, lack of overlap, or post-treatment conditioning mistakes.
+  \end{block}
+\end{frame}
+
+\section{Omitted-Variable Bias}
+
+\begin{frame}{Why Omitting Confounders Biases Regression}
+  A confounder is a variable that affects both treatment and outcome.
+  \[
+    A_i \rightarrow T_i,\qquad A_i \rightarrow Y_i.
+  \]
+  Example: ability in a wage-schooling regression.
+  \begin{itemize}
+    \item Ability raises wages directly.
+    \item Ability also predicts years of education.
+    \item A short regression of wage on education mixes education and ability.
+  \end{itemize}
+  \begin{block}{Plain language}
+    If high-education people would have earned more even without extra education, the education coefficient is too large.
+  \end{block}
+\end{frame}
+
+\begin{frame}{The Omitted-Variable Bias Formula}
+  \hypertarget{main:ovb}{}
+  Suppose the long regression is
+  \[
+    Y_i=\alpha+\tau T_i+\beta A_i+u_i,
+  \]
+  but we estimate the short regression \(Y_i\) on \(T_i\) only.
+  Then
+  \[
+    \tau_{\text{short}}
+    =
+    \tau+\beta\delta,
+  \]
+  where
+  \[
+    \delta = \frac{\Cov(A_i,T_i)}{\Var(T_i)}
+  \]
+  is the slope from regressing the omitted variable \(A_i\) on treatment \(T_i\).
+  \begin{block}{Memorize}
+    Short coefficient \(=\) long coefficient \(+\) effect of omitted variable on outcome \(\times\) relationship between omitted and included variable.
+  \end{block}
+  \derivbutton{ovb}
+\end{frame}
+
+\begin{frame}{Sign Intuition for OVB}
+  \begin{center}
+    \begin{tabular}{@{}ccc@{}}
+      \toprule
+      Effect of omitted \(A\) on \(Y\) & Corr. of \(A\) with \(T\) & Bias direction \\
+      \midrule
+      Positive & Positive & Upward \\
+      Positive & Negative & Downward \\
+      Negative & Positive & Downward \\
+      Negative & Negative & Upward \\
+      \bottomrule
+    \end{tabular}
+  \end{center}
+  \vspace{0.4em}
+  \begin{block}{Exam habit}
+    State both signs. ``The coefficient is biased'' is incomplete; the sign depends on both arrows.
+  \end{block}
+\end{frame}
+
+\begin{frame}{OVB Simulation: Education and Wages}
+  The script simulates latent ability and family background.
+  \vspace{0.3em}
+
+  \begin{center}
+    \begin{tabular}{@{}lcc@{}}
+      \toprule
+      Specification & Education coefficient & Interpretation \\
+      \midrule
+      Short: no controls & 0.204 & badly upward biased \\
+      Add noisy proxies & 0.143 & bias falls but remains \\
+      Oracle: true confounders & 0.078 & close to true 0.080 \\
+      \bottomrule
+    \end{tabular}
+  \end{center}
+  \vspace{0.3em}
+  \begin{itemize}
+    \item The short regression attributes ability and family background to education.
+    \item Imperfect proxies help, but they do not fully reconstruct the experiment.
+    \item The oracle regression is not available in real work; it is a teaching benchmark.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{FWL Simulation: What Changed After Controls?}
+  In the same simulation, the education coefficient with proxies is \(0.143\).
+  \vspace{0.4em}
+
+  The Frisch--Waugh--Lovell calculation:
+  \begin{enumerate}
+    \item regress education on test score and parent index;
+    \item save residualized education \(\tilde{Educ}_i\);
+    \item regress log wage on \(\tilde{Educ}_i\).
+  \end{enumerate}
+  gives \(0.143\) again.
+  \vspace{0.4em}
+  \begin{block}{Interpretation}
+    The controlled coefficient uses only the part of education not linearly predicted by the included controls.
+  \end{block}
+\end{frame}
+
+\begin{frame}{Controls Are Not a Ritual}
+  Do not add controls because the dataset contains them.
+  \vspace{0.3em}
+
+  For each proposed control, ask:
+  \begin{enumerate}
+    \item Is it determined before treatment?
+    \item Does it help block a back-door path from treatment to outcome?
+    \item Does it mainly improve outcome prediction without changing treatment assignment?
+    \item Could treatment itself affect it?
+    \item Could it be a common effect of treatment and an outcome determinant?
+  \end{enumerate}
+  \begin{block}{Practical rule}
+    A control list is part of the research design. It needs an argument, not only a software formula.
+  \end{block}
+\end{frame}
+
+\section{Dummy Variables and Grouped Regression}
+
+\begin{frame}{Binary Dummy Variables}
+  A dummy variable is a \(0/1\) indicator.
+  \[
+    Female_i =
+    \begin{cases}
+      1 & \text{if unit } i \text{ is female},\\
+      0 & \text{otherwise}.
+    \end{cases}
+  \]
+  In
+  \[
+    Y_i=\alpha+\beta Female_i+u_i,
+  \]
+  we have
+  \[
+    \alpha=\E[Y_i\mid Female_i=0],
+    \qquad
+    \beta=\E[Y_i\mid Female_i=1]-\E[Y_i\mid Female_i=0].
+  \]
+  \begin{block}{Important}
+    A dummy coefficient is a difference relative to a base group.
+  \end{block}
+\end{frame}
+
+\begin{frame}{The Dummy-Variable Trap}
+  Suppose education has categories \(8,9,\ldots,18\).
+  \vspace{0.3em}
+
+  If we include an intercept and a dummy for every category, the columns add up to the intercept:
+  \[
+    1 = D_{8i}+D_{9i}+\cdots+D_{18i}.
+  \]
+  Then \(X'X\) is singular.
+  \vspace{0.3em}
+
+  Standard solution:
+  \begin{itemize}
+    \item keep the intercept;
+    \item omit one category as the base group;
+    \item interpret every dummy relative to that omitted category.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Many Dummies: A Saturated Model}
+  \hypertarget{main:dummy-means}{}
+  With categories \(g=1,\ldots,G\), estimate
+  \[
+    Y_i=\alpha+\beta_2D_{2i}+\cdots+\beta_GD_{Gi}+u_i,
+  \]
+  where group 1 is the base group.
+  \vspace{0.3em}
+
+  OLS fitted values are group means:
+  \[
+    \widehat{Y}_i=
+    \begin{cases}
+      \bar Y_1 & \text{if } i\in g=1,\\
+      \bar Y_g & \text{if } i\in g>1.
+    \end{cases}
+  \]
+  \begin{block}{Interpretation}
+    A saturated dummy regression is a table of conditional means written as a regression.
+  \end{block}
+  \derivbutton{dummy-means}
+\end{frame}
+
+\begin{frame}{Dummy Simulation: Flexible Education Effects}
+  Simulated wages have a nonlinear education schedule.
+  \vspace{0.3em}
+
+  \begin{center}
+    \begin{tabular}{@{}lcc@{}}
+      \toprule
+      Model & What it imposes & Example output \\
+      \midrule
+      Linear \(Y\) on education & one constant slope & slope \(=1.691\) \\
+      Education dummies & one mean per year & fitted means equal cell means \\
+      \bottomrule
+    \end{tabular}
+  \end{center}
+  \vspace{0.3em}
+  \begin{block}{Why use dummies?}
+    Dummies avoid forcing a straight line when the CEF is naturally step-shaped or nonlinear.
+  \end{block}
+\end{frame}
+
+\begin{frame}{Treatment Dummies and Interactions}
+  Suppose \(T_i\) is treatment and \(G_i\) is a group dummy.
+  \[
+    Y_i=\alpha+\tau T_i+\lambda G_i+u_i.
+  \]
+  This allows different baseline means by group, but the treatment effect is forced to be the same.
+  \vspace{0.3em}
+
+  To allow different treatment effects:
+  \[
+    Y_i=\alpha+\tau T_i+\lambda G_i+\theta(T_iG_i)+u_i.
+  \]
+  Then
+  \[
+    \text{effect for }G=0:\tau,\qquad
+    \text{effect for }G=1:\tau+\theta.
+  \]
+  \begin{block}{Student warning}
+    ``Controlling for group'' is not the same as allowing the effect to differ by group.
+  \end{block}
+\end{frame}
+
+\begin{frame}{Grouped Data: Why Weights Matter}
+  \hypertarget{main:grouped}{}
+  Sometimes data are aggregated:
+  \[
+    (\bar Y_g,\bar X_g,n_g),\qquad g=1,\ldots,G.
+  \]
+  If \(X_i\) is constant within group \(g\), individual OLS on
+  \[
+    Y_i=\alpha+\beta X_i+u_i
+  \]
+  can be recovered from grouped means by weighted least squares:
+  \[
+    \min_{\alpha,\beta}\sum_g n_g(\bar Y_g-\alpha-\beta \bar X_g)^2.
+  \]
+  \begin{block}{Reason}
+    A group with 800 observations should count more than a group with 8 observations.
+  \end{block}
+  \derivbutton{grouped}
+\end{frame}
+
+\begin{frame}{Grouped Regression Simulation}
+  In the simulated education-wage data:
+  \vspace{0.3em}
+
+  \begin{center}
+    \begin{tabular}{@{}lcc@{}}
+      \toprule
+      Estimator & Intercept & Education slope \\
+      \midrule
+      Individual OLS & -2.247 & 1.691 \\
+      Grouped WLS with counts & -2.247 & 1.691 \\
+      Grouped unweighted OLS & -4.224 & 1.888 \\
+      \bottomrule
+    \end{tabular}
+  \end{center}
+  \vspace{0.3em}
+  \begin{itemize}
+    \item Weighted grouped regression reproduces the individual-data coefficient here.
+    \item Unweighted grouped regression treats rare and common education levels equally.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{When Grouped Regression Is Safe}
+  Grouped regression is safe when:
+  \begin{itemize}
+    \item the group means correspond to the same units and population;
+    \item the regressors used in the model are available as group means;
+    \item weights are the number of observations behind each mean;
+    \item aggregation does not hide within-group confounding needed for identification.
+  \end{itemize}
+  \begin{block}{Common mistake}
+    Regressing totals on totals often changes the question. For grouped OLS, use means with counts as weights.
+  \end{block}
+\end{frame}
+
+\begin{frame}{What Dummies and Groups Teach Us}
+  Dummies and grouped data make a larger point:
+  \begin{itemize}
+    \item regression can reproduce cell means exactly when the model is saturated;
+    \item parametric regressions impose structure across cells;
+    \item weights decide which cells matter most;
+    \item causal interpretation still depends on comparability within cells.
+  \end{itemize}
+  \begin{block}{Bridge to controls}
+    More controls create more cells. This can help identification, but it can also create sparse cells, bad overlap, and bad-control mistakes.
+  \end{block}
+\end{frame}
+
+\section{Beyond Confounders}
+
+\begin{frame}{Not Every Control Has the Same Role}
+  Controls can play different roles:
+  \begin{center}
+    \begin{tabular}{@{}lll@{}}
+      \toprule
+      Type & Graphical role & Usual advice \\
+      \midrule
+      Confounder & \(X\rightarrow T,\ X\rightarrow Y\) & include \\
+      Outcome predictor & \(X\rightarrow Y\) only & often include for precision \\
+      Treatment predictor & \(X\rightarrow T\) only & usually avoid if not needed \\
+      Mediator & \(T\rightarrow M\rightarrow Y\) & exclude for total effect \\
+      Collider & \(T\rightarrow C\leftarrow U\rightarrow Y\) & exclude \\
+      \bottomrule
+    \end{tabular}
+  \end{center}
+  \vspace{0.3em}
+  The same word, ``control'', hides very different causal objects.
+\end{frame}
+
+\begin{frame}{Outcome Predictors Can Improve Precision}
+  Suppose treatment is randomized:
+  \[
+    Y_i=\alpha+\tau T_i+\gamma X_i+\varepsilon_i,
+  \]
+  where \(X_i\) predicts \(Y_i\) but not \(T_i\).
+  \vspace{0.3em}
+
+  Including \(X_i\):
+  \begin{itemize}
+    \item does not fix bias, because there was no bias from random assignment;
+    \item can reduce residual variance;
+    \item often makes the standard error for \(\hat\tau\) smaller.
+  \end{itemize}
+  \begin{block}{Example}
+    Baseline test scores in an education experiment often improve precision for treatment effects on final test scores.
+  \end{block}
+\end{frame}
+
+\begin{frame}{Treatment Predictors Can Hurt Precision}
+  A variable can predict treatment but add little outcome information after other controls.
+  \vspace{0.3em}
+
+  By FWL,
+  \[
+    \hat\tau=\frac{\Cov(Y_i,\tilde T_i)}{\Var(\tilde T_i)}.
+  \]
+  If a new control predicts \(T_i\), then \(\Var(\tilde T_i)\) can shrink.
+  \vspace{0.3em}
+
+  \begin{block}{Consequence}
+    Less residual treatment variation means a noisier estimate, unless the control also helps explain the outcome enough to compensate.
+  \end{block}
+  \derivbutton{precision}
+\end{frame}
+
+\begin{frame}{Bad Controls: Mediators}
+  \hypertarget{main:mediator}{}
+  A mediator lies on the causal path:
+  \[
+    T_i \rightarrow M_i \rightarrow Y_i.
+  \]
+  If the target is the total effect of \(T_i\) on \(Y_i\), do not control for \(M_i\).
+  \vspace{0.3em}
+
+  Example: email treatment \(\rightarrow\) customer opens email \(\rightarrow\) customer pays.
+  \begin{itemize}
+    \item Total effect asks: what is the effect of sending the email?
+    \item Controlling for opening asks: what is the effect of sending the email holding opening fixed?
+    \item The second question removes part of the mechanism.
+  \end{itemize}
+  \derivbutton{mediator}
+\end{frame}
+
+\begin{frame}{Mediator Simulation}
+  Treatment is randomized. It increases agreement, and agreement increases payment.
+  \vspace{0.3em}
+
+  \begin{center}
+    \small
+    \begin{tabular}{@{}lcc@{}}
+      \toprule
+      Regression & Treatment coefficient & Meaning \\
+      \midrule
+      Payment on treatment & 8.636 & total effect estimate \\
+      Payment on treatment + agreement & 2.211 & direct effect \\
+      \bottomrule
+    \end{tabular}
+  \end{center}
+  \vspace{0.3em}
+  \begin{block}{Lesson}
+    A control can make a randomized experiment answer the wrong question.
+  \end{block}
+\end{frame}
+
+\begin{frame}{Bad Controls: Colliders and Selection}
+  \hypertarget{main:collider}{}
+  A collider is a common effect:
+  \[
+    T_i \rightarrow C_i \leftarrow U_i \rightarrow Y_i.
+  \]
+  If we condition on \(C_i\), treatment and the unobserved outcome determinant \(U_i\) become associated.
+  \vspace{0.3em}
+
+  \begin{block}{Intuition}
+    Among units with the same \(C\), a high value of treatment must be offset by a lower value of \(U\). This creates a non-causal comparison.
+  \end{block}
+  \derivbutton{collider}
+\end{frame}
+
+\begin{frame}{Collider Simulation}
+  Treatment is randomized and the true effect is 6.
+  \vspace{0.3em}
+
+  \begin{center}
+    \begin{tabular}{@{}lcc@{}}
+      \toprule
+      Regression & Treatment coefficient & Interpretation \\
+      \midrule
+      Outcome on treatment & 5.999 & randomization works \\
+      Outcome on treatment + collider & 1.700 & conditioning creates bias \\
+      \bottomrule
+    \end{tabular}
+  \end{center}
+  \vspace{0.3em}
+  \begin{itemize}
+    \item The collider is partly caused by treatment.
+    \item It is also partly caused by an unobserved determinant of the outcome.
+    \item Holding it fixed opens a non-causal path from treatment to outcome.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Selection on Outcomes Is Also a Bad Control Problem}
+  Many applied mistakes look like:
+  \[
+    \text{estimate treatment effect only among units with }Y_i>0.
+  \]
+  \vspace{0.3em}
+  If treatment affects whether \(Y_i>0\), this selects on a post-treatment outcome.
+  \begin{itemize}
+    \item Example: marketing campaign affects whether customers buy anything.
+    \item Dropping zero spenders keeps different latent customer types in treatment and control.
+    \item Random assignment before selection does not rescue the selected comparison.
+  \end{itemize}
+  \begin{block}{Safer target}
+    Estimate the effect on total spending for everyone, then separately describe participation if that is policy-relevant.
+  \end{block}
+\end{frame}
+
+\begin{frame}{Practical Control-Selection Rules}
+  Before adding \(X\), classify it:
+  \begin{enumerate}
+    \item \textbf{Pre-treatment confounder:} include if it blocks selection bias.
+    \item \textbf{Pre-treatment outcome predictor:} include if it improves precision and does not damage overlap.
+    \item \textbf{Treatment predictor only:} be cautious; it may reduce useful treatment variation.
+    \item \textbf{Mediator:} exclude for total effects; include only for a direct-effect question with extra assumptions.
+    \item \textbf{Collider or selection variable:} exclude.
+  \end{enumerate}
+  \begin{block}{Workflow}
+    Draw the timing first. If a variable is measured after treatment, treat it as suspicious until proven otherwise.
+  \end{block}
+\end{frame}
+
+\begin{frame}{A Good Regression Table Explains the Design}
+  A regression table should not be a list of increasingly large kitchen-sink specifications.
+  \vspace{0.3em}
+
+  Better sequence:
+  \begin{enumerate}
+    \item show raw treatment-control difference;
+    \item add pre-treatment confounders needed for identification;
+    \item add precision controls separately if useful;
+    \item avoid post-treatment variables in the main total-effect specification;
+    \item explain why the preferred column matches the causal question.
+  \end{enumerate}
+  \begin{block}{Student habit}
+    Label columns by identification logic, not by ``more controls''.
+  \end{block}
+\end{frame}
+
+\section{Synthesis}
+
+\begin{frame}{What Regression Is Doing}
+  \begin{itemize}
+    \item A treatment dummy without controls is a difference in means.
+    \item OLS approximates the CEF with a linear function.
+    \item Multiple regression uses residual treatment variation after partialling out controls.
+    \item Dummy regressions can reproduce group means exactly.
+    \item Grouped regression needs weights when group sizes differ.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{When Regression Is Credible}
+  Regression is credible when:
+  \begin{itemize}
+    \item the target estimand is clear;
+    \item controls are pre-treatment and justified by the assignment process;
+    \item there is enough overlap after conditioning;
+    \item the functional form is not doing hidden extrapolation;
+    \item post-treatment variables are kept out of total-effect regressions.
+  \end{itemize}
+  \begin{block}{One-sentence summary}
+    Regression is not the research design; it is the estimator that implements the design.
+  \end{block}
+\end{frame}
+
+\begin{frame}{Python Examples for This Lecture}
+  The self-contained script is:
+  \[
+    \texttt{lectures/code/lecture-4-regression-controls.py}
+  \]
+  It simulates:
+  \begin{itemize}
+    \item omitted-variable bias and the FWL theorem;
+    \item dummy variables and grouped weighted regression;
+    \item bad controls through mediators and colliders.
+  \end{itemize}
+  \begin{block}{Use in class}
+    Ask students to change the signs and strengths of the simulated relationships, then predict how the coefficients should move before running the code.
+  \end{block}
+\end{frame}
+
+\begin{frame}{Sources and References}
+  Main source chapters:
+  \begin{itemize}
+    \item Matheus Facure Alves, \href{https://matheusfacure.github.io/python-causality-handbook/05-The-Unreasonable-Effectiveness-of-Linear-Regression.html}{Chapter 05: The Unreasonable Effectiveness of Linear Regression}.
+    \item Matheus Facure Alves, \href{https://matheusfacure.github.io/python-causality-handbook/06-Grouped-and-Dummy-Regression.html}{Chapter 06: Grouped and Dummy Regression}.
+    \item Matheus Facure Alves, \href{https://matheusfacure.github.io/python-causality-handbook/07-Beyond-Confounders.html}{Chapter 07: Beyond Confounders}.
+  \end{itemize}
+  Background econometrics:
+  \begin{itemize}
+    \item Angrist and Pischke, \emph{Mostly Harmless Econometrics}.
+    \item Angrist and Pischke, \emph{Mastering 'Metrics}.
+    \item Hernan and Robins, \emph{Causal Inference: What If}.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{What Students Should Be Able to Do}
+  After this lecture, students should be able to:
+  \begin{itemize}
+    \item explain why a treatment dummy coefficient equals a mean difference;
+    \item use FWL intuition to interpret controlled regressions;
+    \item derive and sign omitted-variable bias;
+    \item interpret dummy coefficients relative to a base group;
+    \item explain why grouped regressions need weights;
+    \item distinguish confounders, precision controls, mediators, and colliders.
+  \end{itemize}
+\end{frame}
+
+\appendix
+
+\begin{frame}{Appendix Map}
+  \begin{itemize}
+    \item A1: Selection-bias decomposition reminder.
+    \item A2: Dummy-regression difference in means.
+    \item A3: CEF foundations.
+    \item A4: OLS normal equations.
+    \item A5: Frisch--Waugh--Lovell theorem.
+    \item A6: Conditional independence and regression adjustment.
+    \item A7: Omitted-variable bias formula.
+    \item A8: Dummy regressions and group means.
+    \item A9: Grouped weighted OLS.
+    \item A10: Controls and precision.
+    \item A11: Mediators and total effects.
+    \item A12: Colliders and induced association.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Appendix A1: Selection-Bias Decomposition}
+  \hypertarget{app:ate-reminder}{}
+  Start with
+  \[
+    \E[Y_i\mid T_i=1]-\E[Y_i\mid T_i=0]
+    =
+    \E[Y_{1i}\mid T_i=1]-\E[Y_{0i}\mid T_i=0].
+  \]
+  Add and subtract \(\E[Y_{0i}\mid T_i=1]\):
+  \[
+    \E[Y_{1i}-Y_{0i}\mid T_i=1]
+    +
+    \left\{\E[Y_{0i}\mid T_i=1]-\E[Y_{0i}\mid T_i=0]\right\}.
+  \]
+  The first term is \(\ATT\). The second term is selection bias.
+  \backbutton{ate-reminder}
+\end{frame}
+
+\begin{frame}{Appendix A2: Treatment Dummy Equals Difference in Means}
+  \hypertarget{app:dummy-diff}{}
+  Regression:
+  \[
+    Y_i=\alpha+\tau T_i+u_i,\qquad T_i\in\{0,1\}.
+  \]
+  The normal equations imply residuals average to zero within each treatment group:
+  \[
+    \sum_{T_i=0}(Y_i-\hat\alpha)=0,
+    \qquad
+    \sum_{T_i=1}(Y_i-\hat\alpha-\hat\tau)=0.
+  \]
+  Therefore
+  \[
+    \hat\alpha=\bar Y_0,
+    \qquad
+    \hat\alpha+\hat\tau=\bar Y_1,
+  \]
+  so
+  \[
+    \hat\tau=\bar Y_1-\bar Y_0.
+  \]
+  \backbutton{dummy-diff}
+\end{frame}
+
+\begin{frame}{Appendix A3: CEF Foundations}
+  \hypertarget{app:cef}{}
+  Define
+  \[
+    m(X_i)=\E[Y_i\mid X_i],\qquad \varepsilon_i=Y_i-m(X_i).
+  \]
+  Then
+  \[
+    \E[\varepsilon_i\mid X_i]
+    =
+    \E[Y_i-m(X_i)\mid X_i]
+    =
+    \E[Y_i\mid X_i]-m(X_i)
+    =
+    0.
+  \]
+  Hence \(\varepsilon_i\) is uncorrelated with any function \(g(X_i)\):
+  \[
+    \E[g(X_i)\varepsilon_i]
+    =
+    \E\{g(X_i)\E[\varepsilon_i\mid X_i]\}
+    =
+    0.
+  \]
+  \backbutton{cef}
+\end{frame}
+
+\begin{frame}{Appendix A4: OLS Normal Equations}
+  \hypertarget{app:ols-normal}{}
+  Minimize
+  \[
+    Q(b)=\E[(Y_i-X_i'b)^2].
+  \]
+  Differentiate:
+  \[
+    \frac{\partial Q(b)}{\partial b}
+    =
+    -2\E[X_i(Y_i-X_i'b)].
+  \]
+  At the minimum:
+  \[
+    \E[X_i(Y_i-X_i'\beta)]=0.
+  \]
+  Rearranging:
+  \[
+    \E[X_iY_i]=\E[X_iX_i']\beta,
+    \qquad
+    \beta=\E[X_iX_i']^{-1}\E[X_iY_i].
+  \]
+  \backbutton{ols-normal}
+\end{frame}
+
+\begin{frame}{Appendix A5: Frisch--Waugh--Lovell}
+  \hypertarget{app:fwl}{}
+  Let \(M_X\) be the residual-maker after projecting on controls \(X\):
+  \[
+    M_X=I-X(X'X)^{-1}X'.
+  \]
+  In
+  \[
+    Y=T\tau+X\gamma+u,
+  \]
+  premultiply by \(M_X\):
+  \[
+    M_XY=M_XT\tau+M_XX\gamma+M_Xu.
+  \]
+  Since \(M_XX=0\),
+  \[
+    \tilde Y=\tilde T\tau+\tilde u.
+  \]
+  Thus
+  \[
+    \hat\tau=(\tilde T'\tilde T)^{-1}\tilde T'\tilde Y.
+  \]
+  With a single treatment variable, this is \(\Cov(Y,\tilde T)/\Var(\tilde T)\).
+  \backbutton{fwl}
+\end{frame}
+
+\begin{frame}{Appendix A6: Conditional Independence}
+  \hypertarget{app:cia-reg}{}
+  If
+  \[
+    (Y_{0i},Y_{1i})\indep T_i\mid X_i,
+  \]
+  then
+  \[
+    \E[Y_i\mid T_i=1,X_i=x]
+    =
+    \E[Y_{1i}\mid T_i=1,X_i=x]
+    =
+    \E[Y_{1i}\mid X_i=x],
+  \]
+  and
+  \[
+    \E[Y_i\mid T_i=0,X_i=x]
+    =
+    \E[Y_{0i}\mid X_i=x].
+  \]
+  Subtracting gives
+  \[
+    \E[Y_i\mid T_i=1,X_i=x]-\E[Y_i\mid T_i=0,X_i=x]
+    =
+    \E[Y_{1i}-Y_{0i}\mid X_i=x].
+  \]
+  \backbutton{cia-reg}
+\end{frame}
+
+\begin{frame}{Appendix A7: Omitted-Variable Bias Formula}
+  \hypertarget{app:ovb}{}
+  True long model:
+  \[
+    Y_i=\alpha+\tau T_i+\beta A_i+u_i,
+    \qquad \Cov(T_i,u_i)=0.
+  \]
+  Short-regression slope:
+  \[
+    \tau_{\text{short}}=\frac{\Cov(Y_i,T_i)}{\Var(T_i)}.
+  \]
+  Substitute the true model:
+  \[
+    \tau_{\text{short}}
+    =
+    \frac{\Cov(\alpha+\tau T_i+\beta A_i+u_i,T_i)}{\Var(T_i)}.
+  \]
+  Using covariance rules:
+  \[
+    \tau_{\text{short}}
+    =
+    \tau
+    +
+    \beta\frac{\Cov(A_i,T_i)}{\Var(T_i)}
+    =
+    \tau+\beta\delta.
+  \]
+  \backbutton{ovb}
+\end{frame}
+
+\begin{frame}{Appendix A8: Dummy Regression Gives Group Means}
+  \hypertarget{app:dummy-means}{}
+  \small
+  For groups \(g=1,\ldots,G\), estimate a saturated model with one omitted base group:
+  \[
+    Y_i=\alpha+\sum_{g=2}^G\beta_gD_{gi}+u_i.
+  \]
+  Fitted values are constant within group. OLS chooses constants \(c_g\) to minimize
+  \[
+    \sum_{g=1}^G\sum_{i\in g}(Y_i-c_g)^2.
+  \]
+  Each \(c_g\) solves
+  \[
+    \frac{\partial}{\partial c_g}\sum_{i\in g}(Y_i-c_g)^2
+    =
+    -2\sum_{i\in g}(Y_i-c_g)=0,
+  \]
+  so
+  \[
+    c_g=\bar Y_g.
+  \]
+  \backbutton{dummy-means}
+\end{frame}
+
+\begin{frame}{Appendix A9: Grouped Weighted OLS}
+  \hypertarget{app:grouped}{}
+  Individual least squares with groups:
+  \[
+    \sum_i(Y_i-\alpha-\beta X_i)^2
+    =
+    \sum_g\sum_{i\in g}(Y_i-\alpha-\beta X_g)^2.
+  \]
+  Decompose \(Y_i=\bar Y_g+(Y_i-\bar Y_g)\):
+  \[
+    \sum_{i\in g}(Y_i-\alpha-\beta X_g)^2
+    =
+    n_g(\bar Y_g-\alpha-\beta X_g)^2
+    +
+    \sum_{i\in g}(Y_i-\bar Y_g)^2.
+  \]
+  The second term does not depend on \(\alpha,\beta\).
+  Therefore the minimizer solves
+  \[
+    \min_{\alpha,\beta}\sum_g n_g(\bar Y_g-\alpha-\beta X_g)^2.
+  \]
+  \backbutton{grouped}
+\end{frame}
+
+\begin{frame}{Appendix A10: Controls and Precision}
+  \hypertarget{app:precision}{}
+  After residualizing treatment on controls, the treatment standard error has the form
+  \[
+    \mathrm{se}(\hat\tau)
+    \approx
+    \sqrt{\frac{\sigma^2}{\sum_i(\tilde T_i-\bar{\tilde T})^2}}.
+  \]
+  Adding a control can affect both terms:
+  \begin{itemize}
+    \item if it predicts \(Y\), residual variance \(\sigma^2\) may fall;
+    \item if it predicts \(T\), residual treatment variance may fall;
+    \item the standard error improves only if the first effect dominates the second.
+  \end{itemize}
+  \begin{block}{Takeaway}
+    Outcome predictors are often useful precision controls. Pure treatment predictors can make the treatment coefficient noisier.
+  \end{block}
+  \backbutton{precision}
+\end{frame}
+
+\begin{frame}{Appendix A11: Mediators and Total Effects}
+  \hypertarget{app:mediator}{}
+  Suppose
+  \[
+    M_i=a+bT_i+v_i,
+    \qquad
+    Y_i=\alpha+\tau T_i+\theta M_i+\varepsilon_i.
+  \]
+  Substituting the mediator equation into the outcome:
+  \[
+    Y_i
+    =
+    (\alpha+\theta a)
+    +
+    (\tau+\theta b)T_i
+    +
+    \theta v_i+\varepsilon_i.
+  \]
+  The total effect is
+  \[
+    \tau+\theta b.
+  \]
+  If we control for \(M_i\), the coefficient on \(T_i\) is the direct effect \(\tau\), not the total effect.
+  \vspace{0.3em}
+
+  This may be useful for a direct-effect question, but it is wrong for a total-effect policy question.
+  \backbutton{mediator}
+\end{frame}
+
+\begin{frame}{Appendix A12: Colliders and Induced Association}
+  \hypertarget{app:collider}{}
+  Let treatment be randomized:
+  \[
+    T_i\indep U_i,\qquad Y_i=\alpha+\tau T_i+\lambda U_i+\varepsilon_i.
+  \]
+  Now control for a common effect
+  \[
+    C_i=aT_i+bU_i+\eta_i.
+  \]
+  Before conditioning,
+  \[
+    \Cov(T_i,U_i)=0.
+  \]
+  But after conditioning on \(C_i\), high \(T_i\) must be partly offset by low \(U_i\) to keep \(C_i\) fixed.
+  \vspace{0.3em}
+
+  Thus, generally,
+  \[
+    \Cov(T_i,U_i\mid C_i)\neq 0.
+  \]
+  The regression coefficient on \(T_i\) then absorbs part of \(\lambda U_i\), even though \(T_i\) was randomized.
+  \backbutton{collider}
+\end{frame}
+
+\end{document}

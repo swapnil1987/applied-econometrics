@@ -1,0 +1,470 @@
+\input{tufte-style.tex}
+
+\title{Applied Econometrics: Session 1 Notes}
+\author{Swapnil Singh}
+\date{}
+
+\hypersetup{
+  pdftitle={Applied Econometrics: Session 1 Notes},
+  pdfauthor={Swapnil Singh},
+  pdfkeywords={causal inference, potential outcomes, experiments, selection bias, identification}
+}
+
+\setlength{\headheight}{26pt}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+This lecture builds the language used in the rest of the course. We start from
+causal questions rather than estimators. A causal question is a question about a
+counterfactual: what would have happened to the same unit under a different
+treatment status? We then introduce potential outcomes, the fundamental problem
+of causal inference, selection bias, random assignment, treatment effects from
+means and regressions, and the discipline of using an ideal experiment to guide
+empirical work.
+\end{abstract}
+
+\begin{boxD}
+\textbf{Reading and objective.} These notes accompany Session 1, based on the
+first part of the course material from Mostly Harmless Econometrics and the
+experimental ideal in modern causal inference. The objective is to learn how to
+state a causal question, translate it into potential outcomes, identify the
+missing counterfactual, and explain why random assignment is the benchmark
+against which all later quasi-experimental designs are judged.
+\end{boxD}
+
+\section{Start with the Question}
+
+Applied econometrics does not begin with a regression command. It begins with a
+question. The command is useful only after we know what object the command is
+supposed to estimate. Many weak empirical projects fail because the estimator is
+clear but the causal question is vague.
+
+\begin{boxF}
+\textbf{Common beginner mistake.} A student says, ``I want to regress wages on
+schooling.'' That is not yet a research question. It is a proposed calculation.
+The research question is something like: ``What is the causal effect of one more
+year of schooling on wages for a specified population?''
+\end{boxF}
+
+\subsection{The Four Research FAQs}
+
+For any applied project, ask four questions in order.
+\begin{enumerate}
+    \item What is the causal relationship of interest?
+    \item What ideal experiment would answer it?
+    \item What real-world variation identifies the effect in the available data?
+    \item What mode of statistical inference matches the sampling or assignment
+    process?
+\end{enumerate}
+
+These are sequential. If the first question is unclear, the rest of the project
+will be confused. If the ideal experiment is not stated, it is hard to say what
+the observational design is trying to mimic. If the identification strategy is
+not credible, standard errors cannot rescue the estimate. If inference ignores
+the design, the estimate may look much more precise than it really is.
+
+\begin{defN}[Causal relationship]
+A causal relationship describes how an outcome for the same unit would change
+if treatment were changed, holding fixed the relevant background conditions.
+It is not merely an association between treated and untreated units.
+\end{defN}
+
+Consider schooling and wages. The descriptive fact is that workers with more
+schooling often earn more. The causal question is different: what would happen
+to a worker's wage if that same worker received more schooling than she
+otherwise would have received? The difference matters because workers with more
+schooling may differ in ability, family background, motivation, location, or
+health even before schooling decisions are made.
+
+\subsection{The Ideal Experiment}
+
+The ideal experiment is a thought experiment. We imagine a randomized trial with
+perfect compliance, no attrition, no spillovers, and clean measurement. The
+point is not that the experiment is feasible. The point is that the ideal
+experiment forces us to define treatment, outcome, population, timing, and the
+counterfactual.
+
+\begin{exmp}[Returns to schooling]
+Suppose the target is the effect of one extra year of schooling on adult wages.
+The ideal experiment would randomly assign otherwise comparable students to
+receive one additional year of schooling, prevent all other channels from
+changing, and compare adult wages. In practice we cannot force schooling in this
+way. But the thought experiment teaches us what later designs, such as
+compulsory schooling laws, are trying to approximate.
+\end{exmp}
+
+\begin{boxD}
+\textbf{Design-first habit.} Before naming an estimator, write a sentence of
+the form: ``The ideal experiment would randomly assign ... and compare ... .''
+If that sentence cannot be written, the empirical design is not yet ready.
+\end{boxD}
+
+\subsection{Fundamentally Unidentified Questions}
+
+Some questions are hard not because data are missing, but because the causal
+object itself cannot be separated cleanly. The slides call these
+\emph{fundamentally unidentified questions}.
+
+\begin{exmp}[School starting age]
+Suppose we ask for the effect of being older at school entry on first-grade test
+scores. A child who starts school later is older when observed and may also have
+different time in school depending on the comparison date. Age, grade, and
+school exposure are mechanically linked. Comparing children at the same test
+date changes age; comparing at the same age changes schooling exposure. Without
+a sharper question, there is no single separable treatment effect.
+\end{exmp}
+
+The lesson is not that all difficult questions should be abandoned. The lesson
+is that we must be precise about what is being varied. If the treatment bundle
+contains age, schooling exposure, grade, peer group, and parental choices, then
+the estimated effect is an effect of that bundle. Calling it the effect of
+``age'' alone may be misleading.
+
+\section{Potential Outcomes}
+
+Potential outcomes give formal notation to the counterfactual idea. For each
+unit \(i\), define
+\[
+    Y_{1i} = \text{outcome if treated}, \qquad
+    Y_{0i} = \text{outcome if untreated}.
+\]
+Let \(D_i\in\{0,1\}\) be the treatment indicator. The observed outcome is
+\[
+    Y_i = D_iY_{1i} + (1-D_i)Y_{0i}
+        = Y_{0i} + D_i(Y_{1i}-Y_{0i}).
+\]
+
+\begin{defN}[Individual causal effect]
+The individual causal effect for unit \(i\) is
+\[
+    Y_{1i}-Y_{0i}.
+\]
+It compares two potential outcomes for the same unit.
+\end{defN}
+
+This object is conceptually simple but empirically impossible to observe. If a
+person receives the treatment, we observe \(Y_{1i}\) and miss \(Y_{0i}\). If the
+person does not receive the treatment, we observe \(Y_{0i}\) and miss \(Y_{1i}\).
+
+\begin{boxF}
+\textbf{Fundamental problem.} For each unit at a point in time, we observe only
+one potential outcome. Causal inference is therefore a missing-counterfactual
+problem, not merely a data-size problem.
+\end{boxF}
+
+\subsection{Average Treatment Effects}
+
+Since individual treatment effects are not fully observed, applied work usually
+targets averages.
+\[
+    \ATE = \E[Y_{1i}-Y_{0i}]
+\]
+is the average treatment effect in the full population. The average treatment
+effect on the treated is
+\[
+    \ATT = \E[Y_{1i}-Y_{0i}\mid D_i=1].
+\]
+
+\begin{boxD}
+\textbf{ATE versus ATT.} The ATE asks what would happen if treatment status
+changed for everyone in the target population. The ATT asks what the treatment
+did for the units who actually received it. These are the same only under
+homogeneous treatment effects or special sampling and assignment conditions.
+\end{boxD}
+
+The distinction matters. A job-training program may help disadvantaged workers
+who enroll but not help all workers equally. A medical treatment may have a
+large effect for patients who choose it because they are ill, but a smaller
+average effect in the entire population.
+
+\section{Selection Bias}
+
+The observed difference in mean outcomes between treated and untreated units is
+\[
+    \E[Y_i\mid D_i=1]-\E[Y_i\mid D_i=0].
+\]
+This is easy to compute, but it is not automatically causal. Using the potential
+outcomes equation,
+\[
+    \E[Y_i\mid D_i=1]=\E[Y_{1i}\mid D_i=1],
+\]
+and
+\[
+    \E[Y_i\mid D_i=0]=\E[Y_{0i}\mid D_i=0].
+\]
+Therefore
+\[
+\begin{aligned}
+    \E[Y_i\mid D_i=1]-\E[Y_i\mid D_i=0]
+    &=
+    \E[Y_{1i}\mid D_i=1]-\E[Y_{0i}\mid D_i=0] \\
+    &=
+    \underbrace{\E[Y_{1i}-Y_{0i}\mid D_i=1]}_{\ATT}
+    +
+    \underbrace{\E[Y_{0i}\mid D_i=1]-\E[Y_{0i}\mid D_i=0]}_{\text{selection bias}}.
+\end{aligned}
+\]
+
+\begin{thmN}[Selection-bias decomposition]
+The observed treated-minus-untreated difference equals the treatment effect on
+the treated plus the baseline untreated-outcome difference between treated and
+untreated units.
+\end{thmN}
+
+\begin{proof}
+Add and subtract \(\E[Y_{0i}\mid D_i=1]\):
+\[
+\begin{aligned}
+    \E[Y_{1i}\mid D_i=1]-\E[Y_{0i}\mid D_i=0]
+    &=
+    \E[Y_{1i}\mid D_i=1]-\E[Y_{0i}\mid D_i=1] \\
+    &\quad+
+    \E[Y_{0i}\mid D_i=1]-\E[Y_{0i}\mid D_i=0] \\
+    &=
+    \E[Y_{1i}-Y_{0i}\mid D_i=1]
+    +
+    \E[Y_{0i}\mid D_i=1]-\E[Y_{0i}\mid D_i=0].
+\end{aligned}
+\]
+\end{proof}
+
+\begin{exmp}[Hospitals and health]
+Suppose lower values of \(Y\) mean better health. Hospital patients have an
+average outcome of \(4.3\), while nonpatients have an average outcome of \(3.6\).
+The naive difference is \(0.7\), suggesting hospital care is associated with
+worse health. But hospital patients were probably sicker before treatment. If
+their untreated potential outcome would have been \(1.0\) point worse than that
+of nonpatients, then the causal effect for the treated is
+\[
+    0.7 - 1.0 = -0.3.
+\]
+The naive comparison points in the wrong direction.
+\end{exmp}
+
+\section{Random Assignment}
+
+Random assignment is the benchmark because it removes selection bias by design.
+If treatment is randomly assigned, then treatment status is independent of the
+potential outcomes:
+\[
+    (Y_{1i},Y_{0i}) \indep D_i.
+\]
+
+\begin{assN}[Random assignment]
+Treatment is randomly assigned if
+\[
+    (Y_{1i},Y_{0i}) \indep D_i.
+\]
+Equivalently, treated and untreated groups have the same distribution of
+potential outcomes before treatment is realized.
+\end{assN}
+
+Under random assignment,
+\[
+    \E[Y_{0i}\mid D_i=1]=\E[Y_{0i}\mid D_i=0],
+\]
+so the selection-bias term is zero. Also,
+\[
+    \E[Y_{1i}\mid D_i=1]=\E[Y_{1i}\mid D_i=0]=\E[Y_{1i}].
+\]
+Therefore the observed mean difference identifies the ATE:
+\[
+    \E[Y_i\mid D_i=1]-\E[Y_i\mid D_i=0]
+    =
+    \E[Y_{1i}]-\E[Y_{0i}]
+    =
+    \ATE.
+\]
+
+\begin{thmN}[Identification by random assignment]
+If treatment is randomly assigned and outcomes are observed for all assigned
+units, then the treated-minus-control mean difference identifies the average
+treatment effect.
+\end{thmN}
+
+\begin{boxF}
+\textbf{What experiments do not automatically solve.} Random assignment solves
+selection into treatment at baseline. It does not automatically solve
+non-compliance, attrition, spillovers, bad measurement, small sample noise, or
+incorrect standard errors.
+\end{boxF}
+
+\subsection{The Tennessee STAR Example}
+
+The Tennessee STAR class-size experiment is useful because it shows what good
+experimental evidence looks like in practice. Students and teachers were
+assigned to classes of different sizes. The core empirical question is whether
+smaller classes improved achievement.
+
+The first diagnostic is balance. Before looking at outcomes, check whether
+pre-treatment characteristics are similar across treatment groups. Balance is
+not proof that randomization occurred, but it is evidence that the randomization
+created comparable groups in the observed data.
+
+\begin{boxD}
+\textbf{Balance interpretation.} In a randomized experiment, small baseline
+differences can happen by chance. The question is whether the differences are
+large, systematic, or suspicious relative to the assignment process.
+\end{boxD}
+
+\section{Experiments as Regressions}
+
+With a binary treatment and an intercept, the regression
+\[
+    Y_i = \alpha + \tau D_i + u_i
+\]
+is just a difference in means. The fitted mean for controls is \(\alpha\). The
+fitted mean for treated units is \(\alpha+\tau\). Therefore
+\[
+    \tau
+    =
+    \E[Y_i\mid D_i=1]-\E[Y_i\mid D_i=0]
+\]
+in the population, and the sample OLS estimate equals the sample treated-control
+difference.
+
+\begin{thmN}[Binary-treatment OLS]
+In a regression of \(Y_i\) on an intercept and a binary treatment \(D_i\), the
+OLS slope on \(D_i\) is the treated sample mean minus the control sample mean.
+\end{thmN}
+
+\begin{proof}
+OLS residuals sum to zero within each value of the binary regressor. Hence the
+fitted value for \(D_i=0\) equals the sample mean among controls and the fitted
+value for \(D_i=1\) equals the sample mean among treated units. Since these
+fitted values are \(\hat{\alpha}\) and \(\hat{\alpha}+\hat{\tau}\), we have
+\[
+    \hat{\tau}=\bar{Y}_1-\bar{Y}_0.
+\]
+\end{proof}
+
+Adding pre-treatment covariates to an experimental regression can improve
+precision and adjust for chance imbalance:
+\[
+    Y_i=\alpha+\tau D_i+X_i'\gamma+u_i.
+\]
+In a correctly randomized experiment, the causal credibility comes from
+assignment, not from controls. Controls are useful mainly because they explain
+outcome variation and can make the estimate more precise.
+
+\section{From Experiments to Quasi-Experiments}
+
+Most empirical work is not a clean randomized trial. Later lectures study ways
+to approximate an experiment using observational data: regression adjustment,
+instrumental variables, matching, difference-in-differences, synthetic control,
+and regression discontinuity.
+
+The common logic is always the same:
+\begin{enumerate}
+    \item define the missing counterfactual;
+    \item state what comparison group is being used to approximate it;
+    \item defend why that comparison group is credible;
+    \item report uncertainty honestly.
+\end{enumerate}
+
+\begin{boxD}
+\textbf{Course map.} Every later method is a way of answering the same
+question: why should the observed comparison group reveal the missing potential
+outcome?
+\end{boxD}
+
+\section{Worked Problems}
+
+\begin{exmp}[Observed difference and selection bias]
+An employment program has average earnings of 24 among participants and 20 among
+nonparticipants. Suppose participants would have earned 18 without the program,
+while nonparticipants would have earned 20 without the program. The observed
+difference is
+\[
+    24-20=4.
+\]
+The ATT is
+\[
+    24-18=6.
+\]
+The selection-bias term is
+\[
+    18-20=-2.
+\]
+Thus
+\[
+    4=6+(-2).
+\]
+The naive comparison understates the effect because participants were negatively
+selected on untreated earnings.
+\end{exmp}
+
+\begin{exmp}[Random assignment]
+In an experiment, the treated mean is 75 and the control mean is 70. Under
+random assignment, the ATE estimate is
+\[
+    \hat{\tau}=75-70=5.
+\]
+The reason this has a causal interpretation is not the arithmetic. The reason is
+that random assignment makes the control mean an estimate of the treated group's
+missing untreated mean.
+\end{exmp}
+
+\begin{exmp}[Regression with a treatment dummy]
+Suppose three treated observations have outcomes \(8,10,12\), and three control
+observations have outcomes \(5,6,7\). The treated mean is \(10\), the control
+mean is \(6\), and the regression slope in
+\[
+    Y_i=\alpha+\tau D_i+u_i
+\]
+is
+\[
+    \hat{\tau}=10-6=4.
+\]
+The intercept is \(\hat{\alpha}=6\), and the fitted treated mean is
+\(\hat{\alpha}+\hat{\tau}=10\).
+\end{exmp}
+
+\section{Checklist for Students}
+
+After this lecture you should be able to:
+\begin{itemize}
+    \item distinguish a causal question from a regression specification;
+    \item state the four research FAQs in order;
+    \item describe the ideal experiment for a causal question;
+    \item define \(Y_{1i}\), \(Y_{0i}\), \(D_i\), \(Y_i\), ATE, and ATT;
+    \item explain the fundamental problem of causal inference;
+    \item derive the selection-bias decomposition;
+    \item explain why random assignment removes selection bias;
+    \item compute treatment effects from treatment and control means;
+    \item explain why a binary-treatment regression equals a difference in means;
+    \item list problems that random assignment does not automatically solve;
+    \item connect later quasi-experimental methods to the experimental ideal.
+\end{itemize}
+
+\section{Practice Questions}
+
+\begin{enumerate}
+    \item Write a causal question about schooling and wages. Then write the
+    corresponding ideal experiment.
+    \item Explain why ``people who go to hospital are less healthy than people
+    who do not'' is not evidence that hospitals harm health.
+    \item Define \(Y_{1i}\), \(Y_{0i}\), and \(D_i\) for a job-training program.
+    \item What is the individual treatment effect? Why is it not observed?
+    \item Derive the selection-bias decomposition by adding and subtracting
+    \(\E[Y_{0i}\mid D_i=1]\).
+    \item Give an example where selection bias is positive. Give another where
+    it is negative.
+    \item State the random-assignment condition in potential-outcomes notation.
+    \item Explain why random assignment makes the control group useful.
+    \item In an experiment, treated mean outcome is 12 and control mean outcome
+    is 9. What is the estimated effect?
+    \item Show that a regression on an intercept and a treatment dummy gives the
+    same number as the difference in means.
+    \item Why might covariates still be useful in an experiment?
+    \item Name two problems that can remain even in a randomized experiment.
+    \item What is a fundamentally unidentified question? Give an example.
+    \item Why should an empirical paper describe the design before the
+    estimator?
+    \item Choose one later method from the course and explain how it tries to
+    mimic an experiment.
+\end{enumerate}
+
+\end{document}

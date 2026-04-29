@@ -1,0 +1,779 @@
+\input{tufte-style.tex}
+
+\title{Applied Econometrics: Session 7 Notes}
+\author{Swapnil Singh}
+\date{}
+
+\hypersetup{
+  pdftitle={Applied Econometrics: Session 7 Notes},
+  pdfauthor={Swapnil Singh},
+  pdfkeywords={difference-in-differences, panel data, fixed effects, event study, parallel trends}
+}
+
+\setlength{\headheight}{26pt}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+This session studies designs that use variation across units and across time.
+Difference-in-differences compares changes in treated units with changes in
+untreated units. Panel fixed effects compare a unit to itself over time and
+remove time-invariant unobserved heterogeneity. The central identifying
+assumption is not that treated and control units have the same level of the
+outcome. It is that, absent treatment, their outcome changes would have followed
+parallel paths. We develop the 2-by-2 estimator, its regression version, event
+study diagnostics, one-way and two-way fixed effects, standard errors, and
+practical reporting.
+\end{abstract}
+
+\begin{boxD}
+\textbf{Reading and objective.} The main readings are Chapter 13,
+``Difference-in-Differences,'' and Chapter 14, ``Panel Data and Fixed Effects,''
+from Matheus Facure Alves, \emph{Causal Inference for the Brave and True}. By
+the end of the session, students should be able to compute a 2-by-2 DiD by hand,
+state the parallel-trends assumption in potential-outcomes notation, estimate
+the same estimand by regression, explain fixed effects as demeaning, interpret a
+simple event study, choose reasonable standard errors, and report the design in
+a way that a skeptical reader can audit.
+\end{boxD}
+
+\section{Why This Lecture Matters}
+
+Many empirical questions are about policy changes, market reforms, school
+programs, firm decisions, or local shocks. We rarely get a clean randomized
+experiment. Instead, one group is exposed to a change and another group is not.
+We observe both groups before and after the change. Difference-in-differences
+(DiD) is the simplest way to turn this structure into a causal estimate.
+
+The important word is \emph{difference}. A single before-after comparison is
+usually not credible because many outcomes trend over time. A single treated-
+control comparison after treatment is usually not credible because groups can
+have different baseline levels. DiD removes both problems only if the remaining
+change in the control group is a good proxy for the change the treated group
+would have experienced without treatment.
+
+\begin{boxF}
+\textbf{Core intuition.} DiD does not ask whether treated and control units are
+identical. It asks whether the control group supplies the right missing trend
+for the treated group. Fixed effects extend the same logic: compare units to
+themselves so that stable differences across units cannot explain the estimate.
+\end{boxF}
+
+\section{The 2-by-2 DiD Design}
+
+\subsection{The Four Cells}
+
+The cleanest DiD design has two groups and two periods. Let $D_i=1$ denote a
+treated group and $D_i=0$ a control group. Let $Post_t=1$ denote the period after
+the policy and $Post_t=0$ the period before the policy. There are four observed
+cell means:
+\[
+\begin{array}{c@{\quad}cc}
+& Post_t=0 & Post_t=1 \\
+\midrule
+D_i=0 & \bar{Y}_{00} & \bar{Y}_{01}\\
+D_i=1 & \bar{Y}_{10} & \bar{Y}_{11}
+\end{array}
+\]
+The first subscript denotes group and the second denotes time. Thus
+$\bar{Y}_{11}$ is the treated group after treatment and $\bar{Y}_{10}$ is the
+treated group before treatment.
+
+\begin{defN}[2-by-2 DiD setting]
+A 2-by-2 DiD design has one treated group, one comparison group, one pre period,
+and one post period. Treatment occurs only for the treated group in the post
+period, so the treatment indicator is
+\[
+    T_{it}=D_i Post_t.
+\]
+\end{defN}
+
+\subsection{Two Naive Comparisons}
+
+Before writing the DiD estimator, it is useful to see why the two most obvious
+estimators are weak.
+
+\paragraph{Naive before-after comparison.}
+The treated group's change is
+\[
+    \bar{Y}_{11}-\bar{Y}_{10}.
+\]
+This compares treated units after the policy to the same group before the
+policy. It controls for permanent differences between treated and control units
+because it uses only the treated group. But it does not control for time shocks.
+If the outcome would have risen anyway, this comparison exaggerates the policy
+effect. If the outcome would have fallen anyway, it understates the effect.
+
+\paragraph{Naive post-period cross-section.}
+The post-treatment treated-control gap is
+\[
+    \bar{Y}_{11}-\bar{Y}_{01}.
+\]
+This uses the post period only. It controls for common post-period shocks because
+both groups are measured at the same time. But it does not control for permanent
+baseline differences. If treated units always had higher outcomes, the estimator
+will attribute that old difference to the new policy.
+
+\begin{boxD}
+\textbf{Teaching point.} Students often say ``we control for the before period''
+or ``we control for the control group.'' That is too vague. The before-after
+comparison controls for fixed group differences but not time shocks. The
+post-only comparison controls for time shocks but not fixed group differences.
+DiD combines both comparisons.
+\end{boxD}
+
+\subsection{The DiD Estimator}
+
+The DiD estimator subtracts the control group's change from the treated group's
+change:
+\[
+    \widehat{\delta}_{DiD}
+    =
+    (\bar{Y}_{11}-\bar{Y}_{10})
+    -
+    (\bar{Y}_{01}-\bar{Y}_{00}).
+\]
+Equivalently, it subtracts the pre-treatment treated-control gap from the
+post-treatment treated-control gap:
+\[
+    \widehat{\delta}_{DiD}
+    =
+    (\bar{Y}_{11}-\bar{Y}_{01})
+    -
+    (\bar{Y}_{10}-\bar{Y}_{00}).
+\]
+Both formulas are the same algebraically. The first emphasizes changes over
+time. The second emphasizes changes in group gaps.
+
+\begin{exmp}[Hand calculation]
+Suppose an employment program is introduced in treated cities after period 0.
+The outcome is average monthly earnings.
+\[
+\begin{array}{lcc}
+\toprule
+& \text{Before} & \text{After}\\
+\midrule
+\text{Control cities} & 100 & 112\\
+\text{Treated cities} & 80 & 105\\
+\bottomrule
+\end{array}
+\]
+The treated change is $105-80=25$. The control change is $112-100=12$.
+Therefore
+\[
+    \widehat{\delta}_{DiD}=25-12=13.
+\]
+The estimate says that earnings rose by 13 more units in treated cities than
+would be predicted by the control-city trend.
+\end{exmp}
+
+Notice the role of the control group. It is not used because the control cities
+have the same level as treated cities. They do not: controls start at 100 and
+treated cities start at 80. The control group is used because its increase of 12
+is assumed to be the right counterfactual increase for treated cities.
+
+\section{Potential Outcomes and Parallel Trends}
+
+\subsection{Potential Outcomes}
+
+Let $Y_{it}(1)$ be the outcome for unit $i$ at time $t$ if treated and
+$Y_{it}(0)$ the outcome if untreated. In the post period, treated units reveal
+$Y_{i1}(1)$, but the causal effect for treated units requires the missing
+counterfactual $Y_{i1}(0)$:
+\[
+    \ATT
+    =
+    \E[Y_{i1}(1)-Y_{i1}(0)\mid D_i=1].
+\]
+The problem is that for treated units after treatment we observe
+$Y_{i1}=Y_{i1}(1)$, not $Y_{i1}(0)$.
+
+\begin{defN}[Observed outcome in 2-by-2 DiD]
+With treatment $T_{it}=D_i Post_t$, the observed outcome is
+\[
+    Y_{it}=T_{it}Y_{it}(1)+(1-T_{it})Y_{it}(0).
+\]
+Before treatment, treated and control units are untreated, so their observed
+pre-period outcomes are untreated potential outcomes.
+\end{defN}
+
+\subsection{Counterfactual Imputation}
+
+DiD imputes the missing treated post-period untreated outcome by taking the
+treated pre-period level and adding the control group's untreated trend:
+\[
+    \widehat{\E[Y_{i1}(0)\mid D_i=1]}
+    =
+    \E[Y_{i0}\mid D_i=1]
+    +
+    \{\E[Y_{i1}\mid D_i=0]-\E[Y_{i0}\mid D_i=0]\}.
+\]
+This is the central idea from the Python Causality Handbook's billboard example:
+use the untreated city's growth as the missing growth for the treated city. The
+treated and control locations may differ in levels, but the untreated trend must
+be comparable.
+
+\begin{assN}[Parallel trends]
+In a 2-by-2 design, the untreated potential outcome would have changed by the
+same amount in treated and control groups:
+\[
+    \E[Y_{i1}(0)-Y_{i0}(0)\mid D_i=1]
+    =
+    \E[Y_{i1}(0)-Y_{i0}(0)\mid D_i=0].
+\]
+\end{assN}
+
+\begin{thmN}[Identification of ATT by DiD]
+If treatment affects only the treated group in the post period and parallel
+trends holds, then
+\[
+    \E[\widehat{\delta}_{DiD}] = \ATT.
+\]
+\end{thmN}
+
+\begin{proof}
+Write the population DiD:
+\[
+\delta =
+\{\E[Y_{i1}\mid D_i=1]-\E[Y_{i0}\mid D_i=1]\}
+-
+\{\E[Y_{i1}\mid D_i=0]-\E[Y_{i0}\mid D_i=0]\}.
+\]
+For treated units in the post period, $Y_{i1}=Y_{i1}(1)$. For treated units in
+the pre period and for all control observations, observed outcomes are untreated
+potential outcomes. Therefore
+\[
+\delta =
+\{\E[Y_{i1}(1)\mid D_i=1]-\E[Y_{i0}(0)\mid D_i=1]\}
+-
+\{\E[Y_{i1}(0)\mid D_i=0]-\E[Y_{i0}(0)\mid D_i=0]\}.
+\]
+Add and subtract $\E[Y_{i1}(0)\mid D_i=1]$:
+\[
+\begin{aligned}
+\delta
+&=
+\E[Y_{i1}(1)-Y_{i1}(0)\mid D_i=1]\\
+&\quad+
+\{\E[Y_{i1}(0)-Y_{i0}(0)\mid D_i=1]
+-
+\E[Y_{i1}(0)-Y_{i0}(0)\mid D_i=0]\}.
+\end{aligned}
+\]
+The first term is $\ATT$. The second term is zero under parallel trends. Hence
+$\delta=\ATT$.
+\end{proof}
+
+\subsection{What Breaks Parallel Trends?}
+
+Parallel trends fails when treatment assignment is related to the untreated
+growth of the outcome. Examples:
+\begin{itemize}
+    \item A job-training program is targeted to regions already recovering faster
+    than other regions.
+    \item A price regulation is introduced in markets where prices were already
+    rising unusually fast.
+    \item A school intervention is assigned to schools whose test scores were
+    already declining.
+    \item A firm launches advertising in cities where demand forecasts were
+    already improving.
+\end{itemize}
+
+The failure can bias estimates upward or downward. If treated units would have
+grown faster even without treatment, DiD overstates a positive treatment effect.
+If treated units would have grown more slowly even without treatment, DiD
+understates the effect.
+
+\section{Regression DiD}
+
+\subsection{The Saturated 2-by-2 Regression}
+
+The four-cell DiD can be estimated by OLS:
+\[
+    Y_{it}
+    =
+    \alpha
+    + \beta D_i
+    + \lambda Post_t
+    + \delta(D_i Post_t)
+    + u_{it}.
+\]
+The coefficient $\delta$ equals the DiD estimator.
+
+\begin{defN}[Regression DiD coefficient]
+In the saturated 2-by-2 regression, the interaction coefficient on
+$D_i Post_t$ is the difference-in-differences estimate.
+\end{defN}
+
+To see this, compute the fitted value in each cell:
+\[
+\begin{array}{c@{\quad}cc}
+& Post_t=0 & Post_t=1\\
+\midrule
+D_i=0 & \alpha & \alpha+\lambda\\
+D_i=1 & \alpha+\beta & \alpha+\beta+\lambda+\delta
+\end{array}
+\]
+The treated change is
+\[
+    (\alpha+\beta+\lambda+\delta)-(\alpha+\beta)=\lambda+\delta.
+\]
+The control change is
+\[
+    (\alpha+\lambda)-\alpha=\lambda.
+\]
+The difference is $\delta$.
+
+\begin{boxF}
+\textbf{Why regression is convenient.} Regression gives the same point estimate
+in the simple 2-by-2 case, but it also gives standard errors, allows covariates,
+handles unbalanced cell sizes, and extends naturally to many units and many
+periods.
+\end{boxF}
+
+\subsection{Covariates}
+
+A common applied specification is
+\[
+    Y_{it}
+    =
+    \alpha
+    + \beta D_i
+    + \lambda Post_t
+    + \delta(D_i Post_t)
+    + X_{it}'\theta
+    + u_{it}.
+\]
+Covariates can improve precision and adjust for changes in observed
+composition. But they do not rescue a design with bad parallel trends unless
+parallel trends becomes plausible \emph{conditional on those covariates}. Be
+especially careful with variables that are themselves affected by treatment.
+Controlling for post-treatment mediators changes the estimand and can introduce
+bias.
+
+\section{Event-Study Intuition}
+
+\subsection{Why More Pre-Periods Help}
+
+With only one pre period, parallel trends cannot be examined visually. With
+multiple pre periods, we can plot treated and control outcomes before treatment.
+This does not prove the assumption, because the assumption is about the
+unobserved post-treatment counterfactual. But it can reveal obvious violations.
+
+\begin{defN}[Event time]
+Event time indexes observations relative to the treatment date. If treatment
+starts at time $G_i$ for unit $i$, event time is
+\[
+    k=t-G_i.
+\]
+Then $k=-1$ is the period immediately before treatment, $k=0$ is the first
+treatment period, and $k=1$ is one period after treatment begins.
+\end{defN}
+
+\subsection{A Simple Event-Study Regression}
+
+For one treated cohort and a never-treated comparison group, a common event-study
+specification is
+\[
+    Y_{it}
+    =
+    \alpha_i+\lambda_t+
+    \sum_{k\neq -1}\delta_k
+    \mathbf{1}\{D_i=1,\ t-G_i=k\}
+    +u_{it}.
+\]
+The unit fixed effects $\alpha_i$ absorb permanent differences across units. The
+time fixed effects $\lambda_t$ absorb shocks common to all units in a given
+period. The omitted category is usually $k=-1$, the last pre-treatment period.
+
+Pre-treatment coefficients such as $\delta_{-3}$ and $\delta_{-2}$ are called
+\emph{leads}. They should be close to zero if treated and control groups were
+moving similarly before treatment. Post-treatment coefficients such as
+$\delta_0$, $\delta_1$, and $\delta_2$ trace the dynamic treatment effect
+relative to the omitted pre-treatment period.
+
+\begin{boxD}
+\textbf{How to read an event-study plot.} Look first at the pre-treatment
+coefficients. Large systematic pre-trends are a warning sign. Then look at the
+post-treatment coefficients: do effects appear immediately, grow gradually,
+fade, or reverse? Finally, check the confidence intervals and remember that
+failure to reject zero pre-trends is not proof of parallel trends.
+\end{boxD}
+
+\subsection{Event-Study Pitfalls}
+
+Event studies are useful, but students should not treat them as magic.
+\begin{itemize}
+    \item \textbf{Low power.} Pre-trend tests may not reject even when violations
+    are economically important.
+    \item \textbf{Anticipation.} If units change behavior before official
+    treatment, leads may capture real anticipatory effects rather than only bad
+    trends.
+    \item \textbf{Composition changes.} With staggered adoption, the comparison
+    group for each event-time coefficient can change.
+    \item \textbf{Bad controls.} Already-treated units can become controls for
+    later-treated units in simple TWFE event studies, creating difficult
+    weighting problems.
+    \item \textbf{Multiple testing.} Many lead and lag coefficients invite
+    selective interpretation.
+\end{itemize}
+
+This lecture focuses on the simple one-cohort case. In modern applied work with
+staggered treatment timing and heterogeneous effects, researchers often use
+cohort-specific DiD estimators rather than relying blindly on a single TWFE event
+study.
+
+\section{Panel Data}
+
+\subsection{Notation}
+
+Panel data observe the same units repeatedly over time. A unit might be a
+person, firm, city, school, bank, country, or product. The panel observation is
+indexed by $(i,t)$:
+\[
+    i=1,\ldots,N,
+    \qquad
+    t=1,\ldots,T.
+\]
+A typical panel regression is
+\[
+    Y_{it}=\alpha+\tau T_{it}+X_{it}'\theta+u_{it}.
+\]
+The problem is that $u_{it}$ may contain unobserved unit characteristics that
+are correlated with treatment. For example, cities with better administrators
+may both adopt a policy and have better outcomes.
+
+\begin{defN}[Panel data]
+A panel dataset follows the same units over multiple periods. A balanced panel
+has every unit observed in every period. An unbalanced panel has some missing
+unit-period observations.
+\end{defN}
+
+\subsection{Unit Fixed Effects}
+
+Suppose the error contains a time-invariant unit component:
+\[
+    Y_{it}=\tau T_{it}+X_{it}'\theta+\alpha_i+\varepsilon_{it}.
+\]
+Here $\alpha_i$ captures permanent differences across units: geography,
+baseline ability, long-run institutions, fixed product quality, stable household
+preferences, and other features that do not change over the sample.
+
+\begin{defN}[Unit fixed effects]
+Unit fixed effects are unit-specific intercepts $\alpha_i$. They allow each unit
+to have its own baseline level of the outcome.
+\end{defN}
+
+The fixed-effects estimate of $\tau$ is identified from within-unit changes in
+treatment. Units that never change treatment status do not directly identify
+$\tau$, although they can help estimate time effects and residual variation.
+
+\begin{boxF}
+\textbf{Interpretation.} With unit fixed effects, a treated city is compared to
+itself before treatment, after removing shocks common to all cities if time
+fixed effects are also included. The model does not compare the city level to
+another city's level.
+\end{boxF}
+
+\subsection{The Within Transformation}
+
+Let
+\[
+    \bar{Y}_i=\frac{1}{T_i}\sum_t Y_{it},
+    \qquad
+    \bar{T}_i=\frac{1}{T_i}\sum_t T_{it},
+    \qquad
+    \bar{X}_i=\frac{1}{T_i}\sum_t X_{it}.
+\]
+Average the fixed-effects model over time for unit $i$:
+\[
+    \bar{Y}_i
+    =
+    \tau \bar{T}_i+\bar{X}_i'\theta+\alpha_i+\bar{\varepsilon}_i.
+\]
+Subtract this unit average from the original equation:
+\[
+\begin{aligned}
+    Y_{it}-\bar{Y}_i
+    &=
+    \tau(T_{it}-\bar{T}_i)
+    +(X_{it}-\bar{X}_i)'\theta
+    +(\alpha_i-\alpha_i)
+    +(\varepsilon_{it}-\bar{\varepsilon}_i)\\
+    \ddot{Y}_{it}
+    &=
+    \tau\ddot{T}_{it}
+    +\ddot{X}_{it}'\theta
+    +\ddot{\varepsilon}_{it}.
+\end{aligned}
+\]
+The unit fixed effect disappears. This is why fixed effects remove
+time-invariant confounders.
+
+\begin{thmN}[Within estimator]
+OLS on unit-demeaned variables gives the same slope coefficients as OLS with a
+full set of unit dummy variables, provided the same observations and regressors
+are used.
+\end{thmN}
+
+\begin{boxD}
+\textbf{Consequence.} Variables that do not change within a unit cannot be
+estimated in a unit fixed-effects model. Gender, birth year, permanent location,
+or baseline treatment-group status are absorbed by unit fixed effects if they
+are constant over time.
+\end{boxD}
+
+\subsection{Time Fixed Effects}
+
+Many panels also include shocks that are common to all units in the same period:
+inflation, national recessions, pandemics, exchange-rate shocks, common
+regulatory changes, or seasonality. Add time fixed effects:
+\[
+    Y_{it}
+    =
+    \tau T_{it}+X_{it}'\theta+\alpha_i+\lambda_t+\varepsilon_{it}.
+\]
+The $\lambda_t$ terms allow each period to have its own intercept. They absorb
+common shocks and common trends. Identification now comes from deviations of a
+unit from its own average and deviations from the common time pattern.
+
+\begin{defN}[Two-way fixed effects]
+A two-way fixed-effects model includes both unit fixed effects $\alpha_i$ and
+time fixed effects $\lambda_t$:
+\[
+    Y_{it}=\tau T_{it}+X_{it}'\theta+\alpha_i+\lambda_t+\varepsilon_{it}.
+\]
+\end{defN}
+
+\section{TWFE and Simple DiD}
+
+\subsection{Equivalence in the 2-by-2 Case}
+
+In the 2-by-2 design, the regression
+\[
+    Y_{it}=\alpha+\beta D_i+\lambda Post_t+\delta(D_iPost_t)+u_{it}
+\]
+is the same as a two-way fixed-effects model with group fixed effects and time
+fixed effects:
+\[
+    Y_{gt}=\alpha_g+\lambda_t+\delta T_{gt}+u_{gt},
+\]
+where $g$ indexes group and $T_{gt}=D_gPost_t$. The treatment coefficient is the
+DiD estimator because the fixed effects remove group levels and period shocks.
+
+\begin{exmp}[TWFE equals DiD in four cells]
+Using the earlier table, the DiD estimate was 13. If we run
+\[
+    Y_{gt}=\alpha_g+\lambda_t+\delta T_{gt}+u_{gt}
+\]
+on the four cell means, the fitted values imply exactly the same restriction:
+the treatment coefficient must explain the extra increase in the treated group
+after removing the control-group increase. Hence $\hat{\delta}=13$.
+\end{exmp}
+
+\subsection{Two-Way Demeaning}
+
+With unit and time fixed effects, a useful conceptual transformation is
+\[
+    \tilde{Y}_{it}
+    =
+    Y_{it}-\bar{Y}_i-\bar{Y}_t+\bar{Y},
+\]
+and similarly for $T_{it}$ and $X_{it}$. This removes unit means and time means,
+while adding back the grand mean because it was subtracted twice. OLS on the
+two-way-demeaned variables gives the same slopes as a regression with unit and
+time dummies in balanced panels; software implements the corresponding
+projection in more general cases.
+
+\section{Standard Errors}
+
+Panel and DiD data usually violate the independent-identically-distributed error
+assumption. Outcomes for the same unit are serially correlated. Outcomes within a
+state, school, firm, or city may be correlated because the treatment is assigned
+at that level.
+
+\begin{boxF}
+\textbf{Rule of thumb.} Cluster standard errors at the level of treatment
+assignment. If policy varies by state, cluster by state. If treatment varies by
+school, cluster by school. If treatment varies by person, cluster by person.
+\end{boxF}
+
+Why? Suppose a state policy changes for every individual in the state. Treating
+each individual-year observation as independent exaggerates the amount of
+information. The number of independent policy shocks is closer to the number of
+states than the number of individual observations.
+
+With few clusters, conventional cluster-robust standard errors can still be too
+optimistic. Researchers then report wild-cluster bootstrap inference,
+randomization inference, or more conservative aggregation. The exact choice
+depends on the design, but the principle is constant: inference must respect the
+level at which identifying variation occurs.
+
+\section{Diagnostics and Reporting}
+
+\subsection{What to Plot}
+
+Before presenting a DiD estimate, plot the data. At minimum:
+\begin{itemize}
+    \item group means over time for treated and control groups;
+    \item the treatment date marked clearly;
+    \item an event-study plot if multiple pre and post periods exist;
+    \item sample sizes by group and period;
+    \item placebo or falsification outcomes when available.
+\end{itemize}
+
+Plots do not identify the model by themselves, but they prevent many bad DiD
+applications. If the treated group is already diverging sharply before
+treatment, the reader should not be asked to trust a parallel-trends story
+without additional evidence.
+
+\subsection{Common Mistakes}
+
+\begin{enumerate}
+    \item \textbf{Confusing equal levels with parallel trends.} DiD allows
+    different levels. It requires comparable untreated changes.
+    \item \textbf{Using only before-after evidence.} A time trend can masquerade
+    as a treatment effect.
+    \item \textbf{Controlling for post-treatment variables.} Bad controls can
+    remove part of the causal effect or open new bias channels.
+    \item \textbf{Ignoring treatment timing.} If units adopt treatment at
+    different times, simple TWFE may not estimate a transparent average effect.
+    \item \textbf{Clustering at the wrong level.} Standard errors should reflect
+    the assignment and shock structure.
+    \item \textbf{Overclaiming from pre-trend tests.} Not rejecting pre-trends is
+    not the same as proving parallel trends.
+    \item \textbf{Forgetting the estimand.} Say whether the target is ATT for
+    treated units, an average effect over treated unit-periods, or something
+    else.
+\end{enumerate}
+
+\subsection{Reporting Template}
+
+A clear DiD report should state:
+\begin{itemize}
+    \item the treated units, control units, treatment date, and sample window;
+    \item the outcome definition and measurement frequency;
+    \item the exact regression equation;
+    \item whether unit fixed effects, time fixed effects, and covariates are
+    included;
+    \item the identifying assumption in words;
+    \item the standard-error clustering level;
+    \item the main coefficient, standard error, confidence interval, and units;
+    \item graphical evidence on pre-trends and post-treatment dynamics;
+    \item robustness checks and limitations.
+\end{itemize}
+
+\begin{boxD}
+\textbf{Python example.} The file
+\texttt{lectures/code/lecture-7-did-panel.py} simulates a panel where parallel
+trends holds and a panel where it fails. It computes a 2-by-2 DiD estimate, a
+two-way fixed-effects estimate, and event-study coefficients. Use it to see that
+the same estimator behaves well when the missing counterfactual trend is valid
+and badly when treated units would have grown faster even without treatment.
+\end{boxD}
+
+\section{Worked Problems}
+
+\begin{exmp}[Problem 1: Compute DiD from four cells]
+A city raises the minimum wage. Average employment is:
+\[
+\begin{array}{lcc}
+\toprule
+& \text{Before} & \text{After}\\
+\midrule
+\text{Control counties} & 52 & 54\\
+\text{Treated counties} & 48 & 47\\
+\bottomrule
+\end{array}
+\]
+Compute the before-after estimate, the post-only estimate, and the DiD estimate.
+
+\textbf{Solution.} The before-after estimate for treated counties is
+$47-48=-1$. The post-only treated-control difference is $47-54=-7$. The DiD
+estimate is
+\[
+    (47-48)-(54-52)=-1-2=-3.
+\]
+The interpretation is that employment fell by 3 more units in treated counties
+than predicted by the control counties' change.
+\end{exmp}
+
+\begin{exmp}[Problem 2: State the identifying assumption]
+In Problem 1, what must be true for $-3$ to estimate a causal effect?
+
+\textbf{Solution.} Absent the minimum-wage increase, treated counties would have
+experienced the same employment change as control counties:
+\[
+    \E[Y_{1}(0)-Y_{0}(0)\mid D=1]
+    =
+    \E[Y_{1}(0)-Y_{0}(0)\mid D=0].
+\]
+In words, the treated counties' employment would have increased by 2 units, just
+like the control counties, if the policy had not changed.
+\end{exmp}
+
+\begin{exmp}[Problem 3: Fixed-effects demeaning]
+Suppose one worker has wages $10,12,14$ over three years and treatment status
+$0,1,1$. Compute the within-transformed wage and treatment variables.
+
+\textbf{Solution.} The worker's average wage is $(10+12+14)/3=12$. The average
+treatment is $(0+1+1)/3=2/3$. The demeaned wages are $-2,0,2$. The demeaned
+treatment values are $-2/3,1/3,1/3$. A unit fixed-effects regression uses this
+within-worker variation, not the worker's wage level.
+\end{exmp}
+
+\begin{exmp}[Problem 4: Why time fixed effects matter]
+All firms in an economy experience an inflation shock in 2025. A subset of firms
+also adopts a new technology in 2025. What happens if we omit time fixed effects?
+
+\textbf{Solution.} The technology coefficient may partly capture the economywide
+2025 shock. Time fixed effects absorb the common 2025 component, so the treatment
+effect is estimated from whether adopting firms changed more than non-adopting
+firms in the same year.
+\end{exmp}
+
+\section{Checklist for Students}
+
+Before trusting a DiD or fixed-effects estimate, check the following.
+\begin{enumerate}
+    \item Can I draw the four-cell table or describe the panel structure?
+    \item What is the treated group and when does treatment begin?
+    \item What is the control group and why is it credible?
+    \item What is the exact missing counterfactual?
+    \item Is the identifying assumption parallel trends, conditional parallel
+    trends, or something else?
+    \item Do pre-treatment plots support the story?
+    \item Are unit and time fixed effects included for a reason I can explain?
+    \item Are covariates pre-treatment or plausibly not affected by treatment?
+    \item Are standard errors clustered at the treatment-assignment level?
+    \item Does the reported coefficient have a clear unit and estimand?
+\end{enumerate}
+
+\section{Practice Questions}
+
+\begin{enumerate}
+    \item A tax reform affects one region in 2024. You observe treated and
+    control regions in 2022, 2023, 2024, and 2025. Write an event-study
+    regression with 2023 as the omitted event-time period.
+    \item Explain in words why DiD can allow treated units to have lower baseline
+    outcomes than control units.
+    \item Give one example of a time-invariant unobserved confounder that unit
+    fixed effects can remove and one time-varying confounder that they cannot
+    remove.
+    \item In the regression $Y_{it}=\alpha_i+\lambda_t+\tau T_{it}+u_{it}$, why
+    can a variable such as distance to the capital city not be estimated if it is
+    constant within each region?
+    \item Suppose treated units have positive and statistically significant
+    event-study coefficients two periods before treatment. What does this imply
+    for the DiD design?
+    \item Why might individual-level observations not justify individual-level
+    clustering when treatment is assigned at the state level?
+    \item What changes when covariates are added to a DiD regression? What
+    assumption is now needed?
+    \item Run or read \texttt{lectures/code/lecture-7-did-panel.py}. Compare the
+    parallel-trends and nonparallel-trends scenarios. Which coefficients warn
+    you that the second design is not credible?
+\end{enumerate}
+
+\end{document}

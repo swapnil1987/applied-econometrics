@@ -1,0 +1,757 @@
+\input{tufte-style.tex}
+
+\title{Applied Econometrics: Session 5}
+\author{Swapnil Singh}
+\date{}
+
+\hypersetup{
+  pdftitle={Applied Econometrics: Session 5},
+  pdfauthor={Swapnil Singh},
+  pdfkeywords={instrumental variables, non-compliance, LATE, 2SLS, weak instruments}
+}
+
+\setlength{\headheight}{26pt}
+
+\newcommand{\Zi}{Z_i}
+\newcommand{\Di}{D_i}
+\newcommand{\Yi}{Y_i}
+\newcommand{\Xcov}{X_i}
+\newcommand{\Ui}{U_i}
+\newcommand{\Vi}{V_i}
+\newcommand{\Yone}{Y_i(1)}
+\newcommand{\Yzero}{Y_i(0)}
+\newcommand{\Done}{D_i(1)}
+\newcommand{\Dzero}{D_i(0)}
+\newcommand{\Covp}{\operatorname{Cov}}
+\newcommand{\Corr}{\operatorname{Corr}}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+This lecture studies instrumental variables, non-compliance, and the local
+average treatment effect. The central problem is hidden confounding: treatment
+choice is related to unobserved determinants of the outcome. An instrument gives
+us a source of variation in treatment that is as good as randomly assigned, but
+only after we accept strong assumptions. We derive the first stage, reduced
+form, Wald estimator, two-stage least squares, the weak-instrument problem, and
+the interpretation of IV estimates in randomized experiments with imperfect
+take-up.
+\end{abstract}
+
+\begin{boxD}
+\textbf{Reading and objective.} Read Chapters 08 and 09 of the Python Causality
+Handbook: Instrumental Variables and Non-Compliance/LATE. The goal is to know
+when IV is useful, what assumptions make it credible, how to compute the
+estimand, and how to explain the result in plain language. The companion Python
+script is \texttt{lectures/code/lecture-5-iv-late.py}; run it from the course
+root with \texttt{python lectures/code/lecture-5-iv-late.py}.
+\end{boxD}
+
+\section{Why Instrumental Variables?}
+
+The basic causal question is familiar. We observe an outcome $\Yi$, a treatment
+$\Di$, and perhaps controls $\Xcov$. We would like to estimate the effect of
+treatment on the outcome. If we write the structural equation
+\[
+    \Yi = \alpha + \tau \Di + \Ui,
+\]
+then $\tau$ is the causal effect only if the treatment is unrelated to all
+unobserved determinants of the outcome:
+\[
+    \Covp(\Di,\Ui)=0.
+\]
+This condition is often too strong. People choose treatments. Schools choose
+programs. Firms choose policies. Governments target interventions. These choices
+usually depend on information that the econometrician does not observe.
+
+\begin{exmp}[Education and earnings]
+Suppose $\Di$ is years of schooling and $\Yi$ is log earnings. Ability,
+parental support, motivation, health, and local labor-market opportunities may
+affect both schooling and earnings. If these variables are omitted, an OLS
+regression of earnings on schooling mixes the causal return to schooling with
+selection.
+\end{exmp}
+
+\subsection{Hidden confounding}
+
+Hidden confounding means that the treated and untreated groups would have had
+different outcomes even if nobody had received treatment. In potential-outcome
+notation, the problem is
+\[
+    \E[\Yzero \mid \Di=1] \neq \E[\Yzero \mid \Di=0].
+\]
+The untreated outcome for the treated is missing. The untreated group is not a
+valid replacement if selection into treatment is related to unobservables.
+
+\begin{boxF}
+\textbf{Common mistake.} Students often say ``we controlled for many things, so
+there is no omitted-variable bias.'' That is not a theorem. Controls help only
+for variables that are measured well and enter the model in a sufficiently rich
+way. Unobserved ability remains unobserved even after a long control list.
+\end{boxF}
+
+\subsection{Instrument versus control}
+
+An instrumental variable is not just another control. A control is a variable
+we condition on because it is a confounder or helps make treatment as good as
+random. An instrument is a variable that shifts treatment, but has no direct
+path to the outcome except through treatment.
+
+\begin{defN}[Control]
+A control variable $\Xcov$ is included to compare treated and untreated units that
+are similar in observed characteristics. The identifying hope is often
+\[
+    (\Yone,\Yzero) \independent \Di \mid \Xcov.
+\]
+\end{defN}
+
+\begin{defN}[Instrument]
+An instrument $\Zi$ is a variable that creates exogenous variation in treatment:
+it affects $\Di$, is unrelated to unobserved outcome determinants, and affects
+$\Yi$ only through $\Di$.
+\end{defN}
+
+The distinction is important. If distance to college affects schooling, it may
+be an instrument for schooling. But if distance also affects earnings through
+local labor-market quality, family background, or migration opportunities, it is
+not a valid instrument. It may be a control, a proxy, or a bad variable, but it
+does not automatically solve endogeneity.
+
+\section{Valid Instruments}
+
+The canonical linear IV model is
+\begin{align}
+    \Yi &= \alpha + \tau \Di + \Ui, \label{eq:structural}\\
+    \Di &= \pi_0 + \pi_1 \Zi + \Vi. \label{eq:firststage}
+\end{align}
+Equation \eqref{eq:structural} is the causal equation we care about. Equation
+\eqref{eq:firststage} is the first-stage equation: it tells us whether the
+instrument moves treatment.
+
+\begin{assN}[Relevance]
+The instrument must predict treatment:
+\[
+    \Covp(\Zi,\Di) \neq 0.
+\]
+In the first-stage regression, this means $\pi_1 \neq 0$.
+\end{assN}
+
+Relevance is the easiest IV assumption to understand and the easiest to check.
+If the instrument barely changes treatment, then the instrument gives little
+useful causal variation. The denominator of the IV ratio becomes small, and the
+estimate becomes unstable.
+
+\begin{assN}[Independence]
+The instrument must be as good as randomly assigned with respect to potential
+outcomes and potential treatments. A common statement is
+\[
+    \Zi \independent (\Yone,\Yzero,\Done,\Dzero).
+\]
+In a linear structural equation, the corresponding moment is
+\[
+    \E[\Zi \Ui] = 0,
+\]
+or, after centering, $\Covp(\Zi,\Ui)=0$.
+\end{assN}
+
+Independence is not the same as relevance. A variable can be strongly related
+to treatment and still be invalid. For example, parental education may strongly
+predict a child's schooling, but it likely also predicts earnings through
+family networks, wealth, and preferences.
+
+\begin{assN}[Exclusion restriction]
+The instrument affects the outcome only through the treatment. In potential
+outcome language, changing $Z$ while holding treatment received fixed cannot
+change $Y$.
+\end{assN}
+
+The exclusion restriction is the most fragile assumption. It is also usually
+untestable. A lottery offer for a training program may satisfy exclusion if the
+offer only matters by changing actual training. It fails if receiving the offer
+also raises confidence, improves access to counselors, changes job-search
+behavior, or signals quality to employers even for people who never attend.
+
+\subsection{What can be tested?}
+
+The first stage can be estimated. Balance on observed covariates can be checked
+when the instrument is randomized or plausibly random. Overidentification tests
+can reject some combinations of assumptions when there are more instruments than
+endogenous variables. But the core exclusion restriction cannot be proven from
+the same data used for the outcome regression.
+
+\begin{boxD}
+\textbf{Practical rule.} A credible IV design needs a story before it needs a
+regression table. The story must explain why $Z$ moves $D$, why $Z$ is not
+chosen in response to unobserved determinants of $Y$, and why $Z$ has no direct
+effect on $Y$.
+\end{boxD}
+
+\subsection{Common failure modes}
+
+Instruments fail in predictable ways.
+\begin{itemize}
+  \item The instrument is a proxy for omitted background characteristics.
+  \item The instrument changes expectations, information, prices, peer groups,
+        or effort directly, not only treatment.
+  \item The instrument affects several treatments at once.
+  \item The instrument is chosen by agents who anticipate potential outcomes.
+  \item The instrument is weak, so finite-sample IV behaves badly.
+\end{itemize}
+
+\section{Wald IV}
+
+Start with a binary instrument, $\Zi \in \{0,1\}$, and one treatment $\Di$.
+The first stage is the effect of the instrument on treatment:
+\[
+    \text{First stage}
+    =
+    \E[\Di \mid \Zi=1] - \E[\Di \mid \Zi=0].
+\]
+The reduced form is the effect of the instrument on the outcome:
+\[
+    \text{Reduced form}
+    =
+    \E[\Yi \mid \Zi=1] - \E[\Yi \mid \Zi=0].
+\]
+The Wald estimator divides the reduced form by the first stage:
+\[
+    \hat{\tau}_{Wald}
+    =
+    \frac{\bar{Y}_{Z=1}-\bar{Y}_{Z=0}}
+         {\bar{D}_{Z=1}-\bar{D}_{Z=0}}.
+\]
+
+\begin{thmN}[Wald IV in the constant-effect linear model]
+Suppose
+\[
+    \Yi = \alpha + \tau \Di + \Ui,
+    \qquad \Covp(\Zi,\Ui)=0,
+    \qquad \Covp(\Zi,\Di)\neq 0.
+\]
+Then the population IV estimand is
+\[
+    \tau
+    =
+    \frac{\Covp(\Zi,\Yi)}{\Covp(\Zi,\Di)}.
+\]
+If $Z$ is binary, this equals
+\[
+    \tau
+    =
+    \frac{\E[\Yi\mid \Zi=1]-\E[\Yi\mid \Zi=0]}
+         {\E[\Di\mid \Zi=1]-\E[\Di\mid \Zi=0]}.
+\]
+\end{thmN}
+
+\begin{proof}
+Take covariance of the structural equation with $Z$:
+\[
+    \Covp(\Zi,\Yi)
+    =
+    \Covp(\Zi,\alpha + \tau \Di + \Ui)
+    =
+    \tau\Covp(\Zi,\Di) + \Covp(\Zi,\Ui).
+\]
+By instrument exogeneity, $\Covp(\Zi,\Ui)=0$. If relevance holds, divide by
+$\Covp(\Zi,\Di)$.
+\end{proof}
+
+\begin{exmp}[Numerical Wald calculation]
+Suppose a scholarship offer $Z$ raises college attendance $D$ from $0.40$ to
+$0.70$. The first stage is $0.30$. Suppose average earnings are $40$ for those
+not offered and $43$ for those offered. The reduced form is $3$. The Wald IV
+estimate is
+\[
+    \frac{43-40}{0.70-0.40}=10.
+\]
+The interpretation is: for each additional person induced into college by the
+scholarship offer, earnings rise by $10$ units on average, under the IV
+assumptions.
+\end{exmp}
+
+\subsection{Why the ratio makes sense}
+
+The reduced form is an effect of the instrument, not an effect of treatment.
+If a scholarship offer raises attendance by $30$ percentage points and earnings
+by $3$ units, then the $3$-unit earnings effect is diluted across everyone
+offered the scholarship, including people whose attendance did not change. IV
+rescales the diluted outcome effect by the treatment take-up effect.
+
+\section{IV with Controls}
+
+Controls can be used in IV, but they do not rescue a bad instrument. With
+controls, the assumptions become conditional:
+\[
+    \E[\Zi \Ui \mid \Xcov]=0,
+    \qquad
+    \Covp(\Zi,\Di \mid \Xcov) \neq 0.
+\]
+The structural and first-stage equations are
+\begin{align}
+    \Yi &= \alpha + \tau \Di + \Xcov'\beta + \Ui,\\
+    \Di &= \pi_0 + \pi_1 \Zi + \Xcov'\gamma + \Vi.
+\end{align}
+
+One way to understand controls in IV is residualization. First remove from
+$Y$, $D$, and $Z$ the part predicted by $X$. Then run IV using the residualized
+variables. This is the Frisch-Waugh-Lovell logic applied to IV.
+
+\begin{boxF}
+\textbf{Bad control warning.} Do not control for variables caused by the
+instrument or the treatment unless the research design explicitly calls for it.
+Post-treatment controls can block part of the causal effect or open new
+selection paths.
+\end{boxF}
+
+\section{Two-Stage Least Squares}
+
+The Wald estimator is the simplest IV estimator. Two-stage least squares is the
+standard regression implementation. It extends naturally to continuous
+instruments, controls, and multiple instruments.
+
+\subsection{Stage 1}
+
+Regress treatment on the instrument and controls:
+\[
+    \Di = \pi_0 + \pi_1 \Zi + \Xcov'\gamma + \Vi.
+\]
+Compute the fitted values
+\[
+    \hat{D}_i = \hat{\pi}_0 + \hat{\pi}_1 \Zi + \Xcov'\hat{\gamma}.
+\]
+The fitted treatment $\hat{D}_i$ is the part of treatment predicted by the
+instrument and controls. If the instrument is valid, this predicted part is the
+exogenous part of treatment variation.
+
+\subsection{Stage 2}
+
+Regress the outcome on the fitted treatment and controls:
+\[
+    \Yi = \alpha + \tau \hat{D}_i + \Xcov'\beta + \text{residual}.
+\]
+The coefficient on $\hat{D}_i$ is the 2SLS estimate.
+
+\begin{boxF}
+\textbf{Inference warning.} It is fine to explain 2SLS as two regressions, but
+do not manually run the two regressions and use the second-stage OLS standard
+error. The generated regressor $\hat{D}$ makes those standard errors wrong.
+Use an IV/2SLS routine that computes the correct variance.
+\end{boxF}
+
+\subsection{Projection formula}
+
+Let $W=[\mathbf{1},D,X]$ be the matrix of structural regressors and let
+$Q=[\mathbf{1},Z,X]$ be the matrix of instruments and included exogenous
+variables. The 2SLS estimator is
+\[
+    \hat{\theta}_{2SLS}
+    =
+    (W'P_Q W)^{-1} W'P_Q Y,
+    \qquad
+    P_Q = Q(Q'Q)^{-1}Q'.
+\]
+The projection matrix $P_Q$ keeps only the part of the structural regressors
+that is explained by the instruments and exogenous controls.
+
+\subsection{Multiple instruments}
+
+If there is one endogenous variable and several excluded instruments, 2SLS uses
+all instruments to construct the predicted treatment. This can improve
+precision if the instruments are valid and relevant. But extra instruments are
+not free. Each additional instrument adds another exclusion restriction. A weak
+or questionable extra instrument can make the design less credible.
+
+\section{Weak Instruments}
+
+An instrument is weak when it predicts treatment only weakly. Weak instruments
+create two related problems. First, the estimator is noisy because the IV
+denominator is small. Second, the finite-sample distribution of IV can be badly
+non-normal and biased toward OLS.
+
+For the just-identified Wald estimator,
+\[
+    \hat{\tau}_{IV}
+    =
+    \frac{\widehat{\text{reduced form}}}
+         {\widehat{\text{first stage}}}.
+\]
+If the estimated first stage is close to zero, small sampling errors in the
+denominator produce huge changes in the ratio.
+
+\begin{defN}[First-stage F-statistic]
+With one endogenous variable, the first-stage $F$-statistic tests whether the
+excluded instruments jointly predict treatment after controls. In the simplest
+case with one excluded instrument, it is the square of the first-stage
+$t$-statistic on $Z$.
+\end{defN}
+
+The common rule of thumb is that a first-stage $F$ below about $10$ is a warning
+sign. This is not a law of nature; it is a diagnostic. Serious empirical work
+should report the first stage, discuss instrument strength, and consider
+weak-IV robust inference when instrument strength is questionable.
+
+\begin{boxD}
+\textbf{Python example.} The script
+\texttt{lectures/code/lecture-5-iv-late.py} simulates the same true treatment
+effect with different first-stage strengths. As the first stage gets weaker,
+the distribution of IV estimates becomes much wider even though the data
+generating process has not changed.
+\end{boxD}
+
+\subsection{What IV does not fix}
+
+IV is not a magic correction for every endogeneity problem. It does not fix a
+direct effect of $Z$ on $Y$. It does not fix a non-random instrument. It does
+not estimate the average treatment effect when treatment effects are
+heterogeneous unless additional assumptions hold. It does not make a poor
+measurement strategy credible. It answers the causal question created by the
+instrument.
+
+\section{Non-Compliance}
+
+Randomized experiments often randomize assignment, not treatment received. Let
+$Z_i$ denote assignment or offer, and let $D_i$ denote actual treatment
+received. Non-compliance means
+\[
+    D_i \neq Z_i
+\]
+for some units. Some people assigned to treatment do not take it. Some people
+assigned to control get access elsewhere.
+
+\begin{exmp}[Job training offer]
+A government randomly offers a training program. Some offered people do not
+attend because of time, distance, or lack of interest. Some people not offered
+find similar training elsewhere. Assignment is randomized, but attendance is a
+choice.
+\end{exmp}
+
+\subsection{Why not compare by treatment received?}
+
+Comparing treated and untreated people by actual receipt reintroduces selection.
+People who comply with a training offer may be more motivated. People who seek
+training without an offer may have better information. People who refuse
+treatment may face constraints related to outcomes. Randomization protects $Z$,
+not necessarily $D$.
+
+\subsection{Intention-to-treat}
+
+The intention-to-treat effect is the causal effect of assignment:
+\[
+    \ITT_Y
+    =
+    \E[\Yi \mid \Zi=1] - \E[\Yi \mid \Zi=0].
+\]
+It is often policy relevant. If a government can offer a program but cannot
+force participation, the ITT tells us the effect of the offer policy.
+
+There is also an ITT for treatment take-up:
+\[
+    \ITT_D
+    =
+    \E[\Di \mid \Zi=1] - \E[\Di \mid \Zi=0].
+\]
+This is the first stage in the non-compliance setting.
+
+\section{Compliance Types}
+
+Potential treatment receipt describes what each person would do under each
+assignment:
+\[
+    \Dzero = \text{treatment received if } Z=0,
+    \qquad
+    \Done = \text{treatment received if } Z=1.
+\]
+With binary assignment and binary treatment, each unit belongs to one of four
+latent compliance types.
+
+\begin{center}
+\begin{tabular}{lll}
+\toprule
+Type & $(\Dzero,\Done)$ & Interpretation \\
+\midrule
+Never-taker & $(0,0)$ & never takes treatment \\
+Complier & $(0,1)$ & takes treatment only if assigned/offered \\
+Always-taker & $(1,1)$ & takes treatment regardless of assignment \\
+Defier & $(1,0)$ & does opposite of assignment \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+These types are not usually observed at the individual level because each
+person is seen under only one assignment. We observe either $D_i(0)$ or
+$D_i(1)$, never both.
+
+\begin{assN}[Monotonicity]
+There are no defiers:
+\[
+    \Done \geq \Dzero
+    \quad \text{for every } i.
+\]
+Assignment weakly increases the probability of treatment for everyone.
+\end{assN}
+
+Monotonicity is a behavioral assumption. It is plausible when an offer, subsidy,
+or eligibility rule can only make access easier. It is less plausible when the
+instrument changes incentives in different directions for different people.
+
+\subsection{Which types move the first stage?}
+
+Never-takers have $\Done-\Dzero=0$. Always-takers also have
+$\Done-\Dzero=0$. Defiers have $\Done-\Dzero=-1$. Compliers have
+$\Done-\Dzero=1$. Under monotonicity, the first stage equals the share of
+compliers:
+\[
+    \E[\Di\mid Z_i=1] - \E[\Di\mid Z_i=0]
+    =
+    \Pr(\text{complier}).
+\]
+This is why IV with non-compliance estimates an effect for compliers. They are
+the only group whose treatment status is changed by the instrument.
+
+\section{Local Average Treatment Effect}
+
+The local average treatment effect is the average treatment effect for
+compliers:
+\[
+    \LATE
+    =
+    \E[\Yone-\Yzero \mid \Done > \Dzero].
+\]
+The word ``local'' does not mean local in geography. It means local to the
+subpopulation whose treatment is changed by the instrument.
+
+\begin{thmN}[LATE theorem]
+Assume random assignment of $Z$, exclusion, relevance, and monotonicity. Then
+the Wald estimand identifies the average treatment effect for compliers:
+\[
+    \frac{\E[\Yi\mid \Zi=1]-\E[\Yi\mid \Zi=0]}
+         {\E[\Di\mid \Zi=1]-\E[\Di\mid \Zi=0]}
+    =
+    \E[\Yone-\Yzero \mid \Done>\Dzero].
+\]
+\end{thmN}
+
+\begin{proof}
+By exclusion, observed outcomes can be written as
+\[
+    Y_i = Y_i(0) + D_i\{Y_i(1)-Y_i(0)\}.
+\]
+Random assignment implies that differences by $Z$ reveal average differences
+between potential outcomes under assignment. Therefore
+\[
+    \E[Y_i\mid Z_i=1]-\E[Y_i\mid Z_i=0]
+    =
+    \E[(D_i(1)-D_i(0))\{Y_i(1)-Y_i(0)\}].
+\]
+Under monotonicity, $D_i(1)-D_i(0)$ is one for compliers and zero for
+never-takers and always-takers. Hence the numerator equals
+\[
+    \Pr(\text{complier})
+    \E[Y_i(1)-Y_i(0)\mid \text{complier}].
+\]
+The denominator is
+\[
+    \E[D_i\mid Z_i=1]-\E[D_i\mid Z_i=0]
+    =
+    \E[D_i(1)-D_i(0)]
+    =
+    \Pr(\text{complier}).
+\]
+Dividing gives the complier average treatment effect.
+\end{proof}
+
+\subsection{LATE is not automatically ATE}
+
+If treatment effects are homogeneous, then LATE, ATE, ATT, and other averages
+coincide. But if treatment effects vary across people, IV estimates the effect
+for the people induced by the instrument. This may be exactly the policy group
+of interest, or it may be a narrow group.
+
+\begin{boxF}
+\textbf{Interpretation warning.} Do not write ``IV estimates the treatment
+effect'' without saying for whom. In a non-compliance setting, the honest
+interpretation is usually ``the effect for compliers induced by this
+instrument.''
+\end{boxF}
+
+\subsection{Interpreting compliers}
+
+Compliers are not observed one by one, but we can describe them indirectly. If
+the instrument is distance to a training center, compliers may be people whose
+participation decision is sensitive to travel costs. If the instrument is a
+lottery offer, compliers are people who attend when offered but do not attend
+without the offer. Different instruments define different complier populations.
+
+\begin{exmp}[Non-compliance numeric example]
+Suppose $60\%$ of those offered a program attend and $20\%$ of those not
+offered attend. The first stage is $0.40$, so under monotonicity the complier
+share is $40\%$. If assignment raises average earnings by $2$ units, then
+\[
+    \LATE = \frac{2}{0.40}=5.
+\]
+The offer has an average effect of $2$ on the assigned population, but the
+program's effect on the marginal people induced to attend is $5$.
+\end{exmp}
+
+\section{Reporting IV Results}
+
+A good IV table and discussion should report more than the final 2SLS
+coefficient.
+\begin{itemize}
+  \item Define the outcome, treatment, instrument, sample, and controls.
+  \item Report the first stage, including the sign, magnitude, and
+        first-stage $F$-statistic.
+  \item Report the reduced form when it is substantively meaningful.
+  \item Report the IV/2SLS estimate with appropriate standard errors.
+  \item Explain the identifying assumptions in words.
+  \item Discuss possible exclusion violations.
+  \item State the population affected by the instrument, especially the
+        complier group in LATE settings.
+  \item Compare OLS, ITT, and IV carefully; do not treat disagreement as
+        automatic evidence that IV is better.
+\end{itemize}
+
+\begin{boxD}
+\textbf{Connection to the code.} The lecture script prints three blocks:
+endogeneity and IV recovery, weak instruments, and non-compliance/LATE. In the
+first block, OLS is biased because it omits $U$, while IV recovers the true
+effect because $Z$ is randomly assigned. In the second block, the same true
+effect becomes hard to estimate as the first stage weakens. In the third block,
+the Wald and 2SLS estimates recover the true complier effect, not the population
+ATE.
+\end{boxD}
+
+\section{Worked Problems}
+
+\subsection{Problem 1: First stage, reduced form, and Wald}
+
+A randomized encouragement increases program participation from $25\%$ in the
+control group to $55\%$ in the encouraged group. Average outcomes are $12$ in
+the control group and $15.6$ in the encouraged group.
+
+\textbf{Solution.} The first stage is
+\[
+    0.55-0.25=0.30.
+\]
+The reduced form is
+\[
+    15.6-12=3.6.
+\]
+The Wald estimate is
+\[
+    \hat{\tau}_{Wald} = \frac{3.6}{0.30}=12.
+\]
+Under the IV/LATE assumptions, the treatment effect for compliers is $12$.
+
+\subsection{Problem 2: Why treatment received is endogenous}
+
+Suppose assignment to a scholarship is random, but actual college attendance is
+not. Motivated students are more likely to attend even without a scholarship.
+Explain why comparing attendees to non-attendees is not a randomized comparison.
+
+\textbf{Solution.} Randomization applies to the offer $Z$, not necessarily to
+attendance $D$. Attendance depends on motivation, costs, information, and
+preferences. These variables can also affect earnings. Therefore
+\[
+    \E[\Yzero \mid D=1] \neq \E[\Yzero \mid D=0],
+\]
+so the observed difference by treatment received mixes the treatment effect
+with selection.
+
+\subsection{Problem 3: Deriving the IV estimand}
+
+Assume
+\[
+    Y_i=\alpha+\tau D_i+U_i,
+    \qquad \Covp(Z_i,U_i)=0,
+    \qquad \Covp(Z_i,D_i)\neq 0.
+\]
+Show that $\tau=\Covp(Z_i,Y_i)/\Covp(Z_i,D_i)$.
+
+\textbf{Solution.} Taking covariance with $Z_i$ gives
+\[
+    \Covp(Z_i,Y_i)
+    =
+    \Covp(Z_i,\alpha+\tau D_i+U_i)
+    =
+    \tau\Covp(Z_i,D_i)+\Covp(Z_i,U_i).
+\]
+The constant has zero covariance with $Z_i$, and instrument exogeneity implies
+$\Covp(Z_i,U_i)=0$. Divide by $\Covp(Z_i,D_i)$.
+
+\subsection{Problem 4: Compliance shares}
+
+In an experiment, $E[D\mid Z=1]=0.72$ and $E[D\mid Z=0]=0.18$. Assume
+monotonicity. What share of the population are compliers?
+
+\textbf{Solution.} The complier share is the first stage:
+\[
+    0.72-0.18=0.54.
+\]
+So $54\%$ of the population are compliers. This does not mean we know exactly
+which individuals are compliers.
+
+\subsection{Problem 5: Weak instrument intuition}
+
+Two instruments are proposed for the same treatment. Instrument A changes
+treatment probability by $0.40$. Instrument B changes treatment probability by
+$0.02$. Both are argued to be random. Which one creates the bigger weak-IV
+concern?
+
+\textbf{Solution.} Instrument B. The IV estimator divides by the first stage.
+With a first stage of only $0.02$, sampling noise in the reduced form or first
+stage can produce very large changes in the ratio. Instrument B may still be
+valid in principle, but it is weak and requires special caution.
+
+\section{Checklist for Students}
+
+Before trusting an IV estimate, answer these questions.
+\begin{enumerate}
+  \item What is the treatment $D$?
+  \item What is the instrument $Z$?
+  \item What outcome $Y$ is being studied?
+  \item Why does $Z$ affect $D$? This is relevance.
+  \item Is the first stage large enough to be useful?
+  \item Why is $Z$ as good as randomly assigned, possibly conditional on $X$?
+  \item Could $Z$ affect $Y$ through any channel other than $D$?
+  \item Are controls pre-determined, or are any controls post-treatment?
+  \item Is this a constant-effect IV setting or a LATE setting?
+  \item If it is LATE, who are the likely compliers?
+  \item Are standard errors computed using a proper IV routine?
+  \item Does the paper report first stage, reduced form, and IV estimates?
+\end{enumerate}
+
+\section{Practice Questions}
+
+\begin{enumerate}
+  \item Explain the difference between an instrument and a control variable.
+  Use an example where the same variable might be a bad instrument but a useful
+  control.
+
+  \item A judge's tendency to be strict is used as an instrument for sentence
+  length. State the relevance, independence, and exclusion assumptions in
+  words. Which assumption worries you most?
+
+  \item In a scholarship experiment, the offer raises attendance from $50\%$
+  to $80\%$ and raises earnings from $30$ to $33$. Compute the ITT on earnings,
+  the first stage, and the LATE.
+
+  \item Why is it wrong to interpret the LATE as the ATE when treatment effects
+  are heterogeneous?
+
+  \item Suppose the first-stage $F$-statistic is $3$. What does this suggest?
+  What should the researcher report or do next?
+
+  \item Give an example of an exclusion restriction violation for distance to
+  college as an instrument for education.
+
+  \item In a randomized encouragement design, define never-takers, compliers,
+  always-takers, and defiers using $D(0)$ and $D(1)$.
+
+  \item Run \texttt{lectures/code/lecture-5-iv-late.py}. In the weak-instrument
+  block, what happens to the spread of IV estimates as the first-stage strength
+  falls? Explain using the Wald ratio.
+\end{enumerate}
+
+\end{document}

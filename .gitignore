@@ -128,3 +128,15 @@ dmypy.json
 
 *.md
 !README.md
+
+# LaTeX build artifacts
+*.aux
+*.fdb_latexmk
+*.fls
+*.nav
+*.out
+*.snm
+*.synctex.gz
+*.thm
+*.toc
+*.vrb
