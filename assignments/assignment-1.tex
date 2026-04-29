@@ -1,0 +1,131 @@
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{enumitem}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{listings}
+
+\hypersetup{colorlinks=true, linkcolor=blue, urlcolor=blue}
+\emergencystretch=2em
+
+\lstset{
+  basicstyle=\ttfamily\small,
+  backgroundcolor=\color{gray!10},
+  frame=single,
+  framerule=0pt,
+  breaklines=true,
+  language=Python,
+  showstringspaces=false
+}
+
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\Var}{\mathrm{Var}}
+\newcommand{\Cov}{\mathrm{Cov}}
+\newcommand{\ATE}{\mathrm{ATE}}
+\newcommand{\ATT}{\mathrm{ATT}}
+\newcommand{\indep}{\perp\!\!\!\perp}
+\newcommand{\points}[1]{\hfill \textbf{[#1 points]}}
+
+\title{Assignment 1: Causal Questions, Regression, and Selection on Observables}
+\author{Applied Econometrics}
+\date{}
+
+\begin{document}
+\maketitle
+
+\noindent\textbf{Total: 15 points.} This assignment is based on Lectures 1 and 2. It mixes short theory questions with a small Python exercise. The aim is not to produce a polished empirical paper. The aim is to show that you can define a causal question, write the relevant estimand, and understand what regression is doing.
+
+\paragraph{Submission.} Submit one PDF write-up and one Python script or notebook. Your write-up should include the requested tables, coefficients, and short explanations. Unless a question asks for a derivation, two to five clear sentences are enough.
+
+\paragraph{Starter data.} Run the following command from the course root:
+\begin{lstlisting}
+python assignments/code/assignment-1-starter.py
+\end{lstlisting}
+It creates:
+\begin{itemize}
+  \item \texttt{assignments/data/assignment1\_observational.csv}
+  \item \texttt{assignments/data/assignment1\_randomized.csv}
+\end{itemize}
+
+\paragraph{Variables.}
+\begin{itemize}
+  \item Outcome: \texttt{final\_score}.
+  \item Treatment: \texttt{scholarship}.
+  \item Pre-treatment controls: \texttt{female}, \texttt{baseline\_score}, \texttt{parent\_edu}, and \texttt{age}.
+  \item Post-treatment variable: \texttt{study\_hours\_after}.
+\end{itemize}
+
+\section*{Part A: Causal Setup and Selection Bias}
+
+\begin{enumerate}[label=A\arabic*.]
+  \item Consider the question: ``What is the effect of receiving a study scholarship on a student's final exam score?'' Define \(Y_{1i}\), \(Y_{0i}\), \(D_i\), the observed outcome \(Y_i\), and the average treatment effect \(\ATE\). State clearly what the counterfactual is. \points{1.5}
+
+  \item Show the selection-bias decomposition:
+  \[
+    \E[Y_i\mid D_i=1]-\E[Y_i\mid D_i=0]
+    =
+    \E[Y_{1i}-Y_{0i}\mid D_i=1]
+    +
+    \left\{\E[Y_{0i}\mid D_i=1]-\E[Y_{0i}\mid D_i=0]\right\}.
+  \]
+  Explain in words what each term means. \points{2}
+
+  \item Suppose more motivated students are more likely to apply for and receive the scholarship. In the regression
+  \[
+    Y_i=\alpha+\rho D_i+u_i,
+  \]
+  explain why \(\rho\) may be biased. Use the omitted-variable bias formula to predict the likely sign of the bias if motivation raises scores and raises scholarship take-up. \points{1.5}
+\end{enumerate}
+
+\section*{Part B: Coding Exercise}
+
+Use the observational and randomized datasets created by the starter script. Report coefficients to three decimal places.
+
+\begin{enumerate}[label=B\arabic*.]
+  \item In \texttt{assignment1\_observational.csv}, estimate the naive difference in means:
+  \[
+    \bar{Y}_{D=1}-\bar{Y}_{D=0}.
+  \]
+  Then estimate the same object by OLS using \(Y_i=\alpha+\rho D_i+u_i\). Verify that the two estimates are identical up to rounding. \points{1}
+
+  \item Make a small balance table comparing treated and untreated students on \texttt{baseline\_score}, \texttt{parent\_edu}, \texttt{age}, and \texttt{female}. Which variables look most imbalanced? Explain why this matters for the causal interpretation of the naive comparison. \points{1}
+
+  \item Estimate
+  \[
+    Y_i=\alpha+\rho D_i+X_i'\gamma+u_i,
+  \]
+  where \(X_i\) includes the four pre-treatment controls. Compare \(\hat{\rho}\) to the naive estimate. Explain the movement using the selection-bias or omitted-variable-bias logic from Part A. \points{2}
+
+  \item Add \texttt{study\_hours\_after} to the controlled regression. Does the scholarship coefficient change? Should this be your preferred estimate of the total scholarship effect? Explain why this variable is a bad-control candidate. \points{1}
+
+  \item Repeat B1 and B3 using \texttt{assignment1\_randomized.csv}. Compare the naive and controlled estimates. What should random assignment do to the need for controls? \points{1}
+\end{enumerate}
+
+\section*{Part C: Short Applied Interpretation}
+
+\begin{enumerate}[label=C\arabic*.]
+  \item State the conditional independence assumption needed to interpret the controlled observational regression causally. Write it in symbols and then in plain English. \points{1.5}
+
+  \item State the overlap/common-support condition in words. Give one simple diagnostic from your data that helps assess overlap or comparability. \points{1}
+
+  \item Write one short paragraph giving your preferred estimate from this assignment and the main remaining threat to a causal interpretation. Your paragraph should mention whether your preferred evidence comes from the observational or randomized dataset. \points{1.5}
+\end{enumerate}
+
+\section*{Point Summary}
+\begin{center}
+\begin{tabular}{lcc}
+\toprule
+Part & Topic & Points \\
+\midrule
+A & Potential outcomes, selection bias, OVB & 5 \\
+B & Python regression and balance checks & 6 \\
+C & Causal interpretation & 4 \\
+\midrule
+Total & & 15 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\end{document}

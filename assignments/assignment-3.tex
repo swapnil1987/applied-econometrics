@@ -1,0 +1,135 @@
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{enumitem}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{listings}
+
+\hypersetup{colorlinks=true, linkcolor=blue, urlcolor=blue}
+\emergencystretch=2em
+
+\lstset{
+  basicstyle=\ttfamily\small,
+  backgroundcolor=\color{gray!10},
+  frame=single,
+  framerule=0pt,
+  breaklines=true,
+  language=Python,
+  showstringspaces=false
+}
+
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\ATT}{\mathrm{ATT}}
+\newcommand{\points}[1]{\hfill \textbf{[#1 points]}}
+
+\title{Assignment 3: Difference-in-Differences}
+\author{Applied Econometrics}
+\date{}
+
+\begin{document}
+\maketitle
+
+\noindent\textbf{Total: 15 points.} This assignment is based on the difference-in-differences, panel data, and fixed-effects lecture. The goal is to make students practice the basic 2-by-2 estimator, its regression version, and the central role of parallel trends.
+
+\paragraph{Submission.} Submit one PDF write-up and one Python script or notebook. Include the requested coefficients and one group-means plot.
+
+\paragraph{Starter data.} Run the following command from the course root:
+\begin{lstlisting}
+python assignments/code/assignment-3-starter.py
+\end{lstlisting}
+It creates:
+\begin{itemize}
+  \item \texttt{assignments/data/assignment3\_panel\_clean.csv}
+  \item \texttt{assignments/data/assignment3\_panel\_violation.csv}
+\end{itemize}
+Both datasets have columns \texttt{unit}, \texttt{year}, \texttt{treated\_group}, \texttt{post}, \texttt{treated\_post}, \texttt{event\_time}, and \texttt{outcome}.
+
+\section*{Part A: 2-by-2 DiD by Hand}
+
+Suppose a minimum-wage policy is adopted by one region but not another. The table reports average employment:
+
+\begin{center}
+\begin{tabular}{lcc}
+\toprule
+Group & Before & After \\
+\midrule
+Treated region & 50 & 56 \\
+Control region & 48 & 51 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{enumerate}[label=A\arabic*.]
+  \item Compute the treated change, the control change, and the DiD estimate. \points{1}
+
+  \item Write the 2-by-2 regression
+  \[
+    Y_{gt}=\alpha+\gamma Treat_g+\lambda Post_t+\delta(Treat_g\times Post_t)+u_{gt}.
+  \]
+  What does \(\delta\) equal in the table above? \points{1}
+
+  \item State the parallel-trends assumption for this example in words and symbols. \points{1.25}
+
+  \item Explain why DiD allows permanent level differences between treated and control regions, but not different untreated trends. \points{0.75}
+\end{enumerate}
+
+\section*{Part B: DiD Coding}
+
+Use \texttt{assignment3\_panel\_clean.csv} first.
+
+\begin{enumerate}[label=B\arabic*.]
+  \item Make a plot of average \texttt{outcome} by \texttt{year} separately for treated and control units. Mark the first treated year. Briefly describe what the plot suggests about pre-treatment trends. \points{1}
+
+  \item Compute the 2-by-2 DiD estimate directly from group-period means, using all pre-treatment years as ``before'' and all post-treatment years as ``after''. \points{1}
+
+  \item Estimate a two-way fixed-effects regression:
+  \[
+    Y_{it}=\alpha_i+\lambda_t+\beta treated\_post_{it}+u_{it}.
+  \]
+  You may use dummy variables or a formula such as \texttt{outcome \textasciitilde{} treated\_post + C(unit) + C(year)}. Report \(\hat{\beta}\). Compare it to the direct DiD estimate. \points{1.5}
+
+  \item Estimate a simple event-study regression with unit and year fixed effects, omitting event time \(k=-1\). Report coefficients for at least \(k=-3,-2,0,1,2,3\) when available. What should the lead coefficients tell us? \points{1.5}
+
+  \item Repeat B1--B3 using \texttt{assignment3\_panel\_violation.csv}. Explain why the regression still runs but the causal interpretation is weaker. \points{1}
+\end{enumerate}
+
+\section*{Part C: Theory and Interpretation}
+
+\begin{enumerate}[label=C\arabic*.]
+  \item Let \(D_i=1\) indicate membership in the treated group and \(t\in\{0,1\}\) indicate time. The target is
+  \[
+    \ATT=\E[Y_{i1}(1)-Y_{i1}(0)\mid D_i=1].
+  \]
+  Derive why the DiD estimand identifies this target under parallel trends:
+  \[
+    \left\{\E[Y_{i1}\mid D_i=1]-\E[Y_{i0}\mid D_i=1]\right\}
+    -
+    \left\{\E[Y_{i1}\mid D_i=0]-\E[Y_{i0}\mid D_i=0]\right\}.
+  \]
+  \points{2}
+
+  \item Explain the roles of unit fixed effects and time fixed effects in the panel regression. What kind of omitted variable does each one remove? \points{1}
+
+  \item Explain why standard errors in DiD applications are often clustered at the treatment assignment or unit level. \points{1}
+
+  \item Give two practical diagnostics you would report before trusting a DiD estimate. For each diagnostic, write one sentence explaining what it can and cannot prove. \points{1}
+\end{enumerate}
+
+\section*{Point Summary}
+\begin{center}
+\begin{tabular}{lcc}
+\toprule
+Part & Topic & Points \\
+\midrule
+A & 2-by-2 DiD and assumptions & 4 \\
+B & Python panel regressions and event study & 6 \\
+C & Identification and interpretation & 5 \\
+\midrule
+Total & & 15 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\end{document}

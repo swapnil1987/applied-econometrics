@@ -1,0 +1,142 @@
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{enumitem}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{listings}
+
+\hypersetup{colorlinks=true, linkcolor=blue, urlcolor=blue}
+\emergencystretch=2em
+
+\lstset{
+  basicstyle=\ttfamily\small,
+  backgroundcolor=\color{gray!10},
+  frame=single,
+  framerule=0pt,
+  breaklines=true,
+  language=Python,
+  showstringspaces=false
+}
+
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\Prob}{\mathbb{P}}
+\newcommand{\ATE}{\mathrm{ATE}}
+\newcommand{\ATT}{\mathrm{ATT}}
+\newcommand{\LATE}{\mathrm{LATE}}
+\newcommand{\ITT}{\mathrm{ITT}}
+\newcommand{\indep}{\perp\!\!\!\perp}
+\newcommand{\points}[1]{\hfill \textbf{[#1 points]}}
+
+\title{Assignment 2: Instrumental Variables and Matching Regression}
+\author{Applied Econometrics}
+\date{}
+
+\begin{document}
+\maketitle
+
+\noindent\textbf{Total: 15 points.} This assignment is based on the IV and matching lectures. It is deliberately small: you should be able to complete it with \texttt{pandas}, \texttt{numpy}, and \texttt{statsmodels}. The main goal is to distinguish the assumptions behind IV from the assumptions behind matching or regression adjustment.
+
+\paragraph{Submission.} Submit one PDF write-up and one Python script or notebook. Include any tables you need, but keep interpretation concise.
+
+\paragraph{Starter data.} Run the following command from the course root:
+\begin{lstlisting}
+python assignments/code/assignment-2-starter.py
+\end{lstlisting}
+It creates:
+\begin{itemize}
+  \item \texttt{assignments/data/assignment2\_iv.csv}
+  \item \texttt{assignments/data/assignment2\_iv\_weak.csv}
+  \item \texttt{assignments/data/assignment2\_matching.csv}
+\end{itemize}
+
+\section*{Part A: IV by Hand}
+
+A university randomly offers some students access to an intensive tutoring program. Let \(Z_i\) be the offer, \(D_i\) actual tutoring take-up, and \(Y_i\) the final exam score.
+
+\begin{center}
+\begin{tabular}{lcc}
+\toprule
+Quantity & \(Z_i=1\) & \(Z_i=0\) \\
+\midrule
+\(\E[Y_i\mid Z_i]\) & 76 & 72 \\
+\(\E[D_i\mid Z_i]\) & 0.62 & 0.22 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{enumerate}[label=A\arabic*.]
+  \item Compute the reduced form, the first stage, and the Wald IV estimate:
+  \[
+    \hat{\beta}_{Wald}
+    =
+    \frac{\bar{Y}_{Z=1}-\bar{Y}_{Z=0}}
+         {\bar{D}_{Z=1}-\bar{D}_{Z=0}}.
+  \]
+  Interpret the answer in one sentence. \points{1.5}
+
+  \item State the relevance, independence, exclusion, and monotonicity assumptions for this example. Write each assumption in plain English. \points{2}
+
+  \item Under the IV assumptions, whose treatment effect is estimated by the Wald estimator? Explain why this is generally a \(\LATE\), not automatically an \(\ATE\). \points{1}
+
+  \item Explain what a weak instrument is. Why does a strong first stage not prove the exclusion restriction? \points{0.5}
+\end{enumerate}
+
+\section*{Part B: IV Coding}
+
+Use \texttt{assignment2\_iv.csv}. The outcome is \texttt{earnings}. The endogenous treatment is \texttt{training}. The instrument is \texttt{offer}.
+
+\begin{enumerate}[label=B\arabic*.]
+  \item Estimate the naive OLS regression
+  \[
+    earnings_i=\alpha+\rho training_i+u_i.
+  \]
+  Then estimate the first-stage regression of \texttt{training} on \texttt{offer}, and the reduced-form regression of \texttt{earnings} on \texttt{offer}. Report all three slopes. \points{1.5}
+
+  \item Compute the Wald IV estimate from the first-stage and reduced-form slopes. Compare it to the naive OLS estimate. Which estimate is closer to the intended causal interpretation if the offer is a valid instrument? \points{1}
+
+  \item Repeat B1 and B2 using \texttt{assignment2\_iv\_weak.csv}. What changes in the first stage? What happens to the IV estimate? \points{1}
+
+  \item Write a short interpretation of the IV estimate that explicitly mentions compliers. \points{0.5}
+\end{enumerate}
+
+\section*{Part C: Matching and Regression Adjustment}
+
+Use \texttt{assignment2\_matching.csv}. The treatment is \texttt{program}. The outcome is \texttt{wage}. The pre-treatment covariates are \texttt{age}, \texttt{education}, \texttt{pre\_wage}, and \texttt{female}.
+
+\begin{enumerate}[label=C\arabic*.]
+  \item Estimate the naive treated-control difference in mean wages. Then estimate a controlled regression of \texttt{wage} on \texttt{program} and the four pre-treatment covariates. Report the treatment coefficient from each approach. \points{1}
+
+  \item Estimate propensity scores using a logit model for \texttt{program} as a function of the four pre-treatment covariates. Report the minimum and maximum estimated propensity score separately for treated and untreated observations. Does overlap look reasonable? \points{1}
+
+  \item Construct five propensity-score strata using quintiles of the estimated propensity score. Within each stratum, compute the treated-control wage difference. Then compute an overall ATT-style estimate by weighting each stratum's difference by the number of treated observations in that stratum. Report the five stratum effects and the weighted estimate. \points{1.5}
+
+  \item Compare the controlled regression estimate and the propensity-score stratification estimate. Are they close? Explain why they need not be identical even if both use the same observed covariates. \points{0.5}
+\end{enumerate}
+
+\section*{Part D: Synthesis}
+
+\begin{enumerate}[label=D\arabic*.]
+  \item In one paragraph, compare the identifying assumptions behind IV and matching. Your answer should mention selection on unobservables, selection on observables, exclusion restrictions, and overlap. \points{1.5}
+
+  \item Suppose a policy maker asks for ``the effect for everyone who could ever receive the program.'' Which method in this assignment is more naturally local, and which is more naturally based on observed comparability? Explain the estimand problem. \points{0.5}
+\end{enumerate}
+
+\section*{Point Summary}
+\begin{center}
+\begin{tabular}{lcc}
+\toprule
+Part & Topic & Points \\
+\midrule
+A & IV assumptions and Wald calculation & 5 \\
+B & IV coding & 4 \\
+C & Matching and regression adjustment & 4 \\
+D & Synthesis & 2 \\
+\midrule
+Total & & 15 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\end{document}

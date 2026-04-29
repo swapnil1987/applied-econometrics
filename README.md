@@ -12,3 +12,11 @@
 | 8 | Synthetic Control | [Slides](lectures/lecture-8.pdf) | [Notes](lectures/lecture-8-notes.pdf) |
 | 9 | Regression Discontinuity Design | [Slides](lectures/lecture-9.pdf) | [Notes](lectures/lecture-9-notes.pdf) |
 | 10 | Basic Introduction to Macroeconometrics | [Slides](lectures/lecture-10.pdf) | [Notes](lectures/lecture-10-notes.pdf) |
+
+## Assignments
+
+| Assignment | Topic | Handout | Starter Code |
+|---|---|---|---|
+| 1 | Lectures 1-2: causal questions, regression, and selection on observables | [PDF](assignments/assignment-1.pdf) | [Code](assignments/code/assignment-1-starter.py) |
+| 2 | Instrumental variables and matching regression | [PDF](assignments/assignment-2.pdf) | [Code](assignments/code/assignment-2-starter.py) |
+| 3 | Difference-in-differences | [PDF](assignments/assignment-3.pdf) | [Code](assignments/code/assignment-3-starter.py) |
