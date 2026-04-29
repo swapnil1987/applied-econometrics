@@ -11,3 +11,4 @@
 | 7 | Difference-in-Differences, Panel Data, and Fixed Effects | [Slides](lectures/lecture-7.pdf) | [Notes](lectures/lecture-7-notes.pdf) |
 | 8 | Synthetic Control | [Slides](lectures/lecture-8.pdf) | [Notes](lectures/lecture-8-notes.pdf) |
 | 9 | Regression Discontinuity Design | [Slides](lectures/lecture-9.pdf) | [Notes](lectures/lecture-9-notes.pdf) |
+| 10 | Basic Introduction to Macroeconometrics | [Slides](lectures/lecture-10.pdf) | [Notes](lectures/lecture-10-notes.pdf) |

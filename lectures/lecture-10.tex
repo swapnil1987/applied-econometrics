@@ -1,0 +1,822 @@
+\documentclass[11pt,aspectratio=169]{beamer}
+\usetheme{SimplePlus}
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath,amssymb,mathtools}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{appendixnumberbeamer}
+\usepackage{hyperref}
+
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\Var}{\mathrm{Var}}
+\newcommand{\Cov}{\mathrm{Cov}}
+\newcommand{\Prob}{\mathbb{P}}
+\newcommand{\Corr}{\mathrm{Corr}}
+\newcommand{\AR}{\mathrm{AR}}
+\newcommand{\VAR}{\mathrm{VAR}}
+\newcommand{\MA}{\mathrm{MA}}
+\newcommand{\IRF}{\mathrm{IRF}}
+\newcommand{\AIC}{\mathrm{AIC}}
+\newcommand{\BIC}{\mathrm{BIC}}
+\newcommand{\OLS}{\mathrm{OLS}}
+\newcommand{\plim}{\operatorname*{plim}}
+\newcommand{\derivbutton}[1]{\vspace{0.4em}\hfill\hyperlink{app:#1}{\beamerbutton{Appendix details}}}
+\newcommand{\backbutton}[1]{\vspace{0.4em}\hfill\hyperlink{main:#1}{\beamerbutton{Back to main slide}}}
+
+\title{Applied Econometrics: Session 10}
+\subtitle{A Basic Introduction to Macroeconometrics}
+\author{PhD Intensive Course}
+\institute{Lecture 10}
+\date{\today}
+
+\begin{document}
+
+\begin{frame}
+  \titlepage
+\end{frame}
+
+\begin{frame}{How This Lecture Fits the Course}
+  The first part of the course focused on micro-style causal designs: experiments, controls, IV, matching, DiD, synthetic control, and RD.
+  \vspace{0.5em}
+
+  Macroeconometrics asks related questions with different data:
+  \begin{itemize}
+    \item observations are usually indexed by time: \(t=1,\ldots,T\);
+    \item outcomes are persistent and move together;
+    \item one aggregate shock can affect many variables at once;
+    \item sample sizes are often small: 60 quarterly observations is only 15 years.
+  \end{itemize}
+
+  \begin{block}{Core message}
+    In macroeconometrics, time dependence is not a nuisance. It is usually the object of interest.
+  \end{block}
+\end{frame}
+
+\begin{frame}{Roadmap for a 2.5 Hour Introduction}
+  \begin{tabular}{p{0.23\linewidth}p{0.68\linewidth}}
+    \toprule
+    Time & Topic \\
+    \midrule
+    0--20 min & What macroeconometrics studies; why time-series data are special \\
+    20--55 min & Trends, growth rates, stationarity, autocorrelation, and unit roots \\
+    55--90 min & Univariate dynamics: AR models, persistence, and forecasts \\
+    90--125 min & Multivariate dynamics: VARs, Granger causality, and impulse responses \\
+    125--145 min & Identification: why a VAR residual is not automatically a structural shock \\
+    145--150 min & Checklist and takeaways \\
+    \bottomrule
+  \end{tabular}
+\end{frame}
+
+\begin{frame}{Learning Goals}
+  By the end, students should be able to:
+  \begin{itemize}
+    \item distinguish forecasting, description, and causal/structural analysis;
+    \item explain why serial correlation changes standard econometric reasoning;
+    \item recognize trends, growth rates, stationarity, and unit-root behavior;
+    \item estimate and interpret a simple autoregression;
+    \item explain what a VAR is and what an impulse response measures;
+    \item state why macro shocks require identifying assumptions.
+  \end{itemize}
+\end{frame}
+
+\section{What Is Macroeconometrics?}
+
+\begin{frame}{What Is Macroeconometrics?}
+  Macroeconometrics is econometrics for aggregate time-series and panel-time-series data.
+
+  \begin{itemize}
+    \item GDP, consumption, investment, inflation, unemployment, wages.
+    \item Interest rates, credit, exchange rates, house prices, asset prices.
+    \item Fiscal variables: spending, taxes, debt, deficits.
+    \item Cross-country or regional macro panels.
+  \end{itemize}
+
+  \begin{block}{Simple definition}
+    Macroeconometrics studies how aggregate economic variables move over time, forecast each other, and respond to shocks and policy changes.
+  \end{block}
+\end{frame}
+
+\begin{frame}{Three Different Tasks}
+  The same dataset can be used for three different purposes.
+  \vspace{0.4em}
+
+  \begin{tabular}{p{0.24\linewidth}p{0.34\linewidth}p{0.31\linewidth}}
+    \toprule
+    Task & Question & Example \\
+    \midrule
+    Description & What happened? & Inflation rose before unemployment fell. \\
+    Forecasting & What will happen next? & Predict next quarter's GDP growth. \\
+    Structural analysis & What caused what? & Estimate the effect of a monetary-policy shock. \\
+    \bottomrule
+  \end{tabular}
+
+  \begin{block}{Warning}
+    A good forecasting model is not automatically a good causal model.
+  \end{block}
+\end{frame}
+
+\begin{frame}{Why Macro Data Are Hard}
+  Macro data are not just large versions of cross-sectional data.
+
+  \begin{itemize}
+    \item \textbf{Persistence:} high GDP today predicts high GDP tomorrow.
+    \item \textbf{Common shocks:} recessions move many variables together.
+    \item \textbf{Policy feedback:} central banks react to inflation and output.
+    \item \textbf{Small samples:} annual and quarterly data give limited \(T\).
+    \item \textbf{Nonstationarity:} many levels trend over time.
+    \item \textbf{Expectations:} decisions depend on anticipated future policy.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Running Example}
+  We will use the same language for several macro variables:
+  \[
+    y_t = \text{output growth},\qquad
+    \pi_t = \text{inflation},\qquad
+    i_t = \text{policy interest rate}.
+  \]
+
+  Typical questions:
+  \begin{itemize}
+    \item Does inflation help forecast future interest rates?
+    \item How persistent is output growth?
+    \item What happens to output and inflation after a monetary tightening?
+    \item Did two trending variables move together for economic reasons or just because both trended?
+  \end{itemize}
+\end{frame}
+
+\section{Time-Series Basics}
+
+\begin{frame}{From Cross Sections to Time Series}
+  In a cross section, observations are indexed by units:
+  \[
+    i=1,\ldots,n.
+  \]
+  In a time series, observations are indexed by time:
+  \[
+    t=1,\ldots,T.
+  \]
+
+  \begin{block}{Key difference}
+    \(y_t\) and \(y_{t-1}\) are usually related. Treating them as independent observations is often wrong.
+  \end{block}
+\end{frame}
+
+\begin{frame}{Lag Notation}
+  A lag is a past value of the same variable:
+  \[
+    y_{t-1},\quad y_{t-2},\quad y_{t-3}.
+  \]
+
+  The lag operator \(L\) is shorthand:
+  \[
+    Ly_t = y_{t-1},\qquad L^2y_t=y_{t-2}.
+  \]
+
+  Differences are written as
+  \[
+    \Delta y_t = y_t-y_{t-1}=(1-L)y_t.
+  \]
+\end{frame}
+
+\begin{frame}{Always Plot the Series First}
+  Before estimating a model, plot the data.
+
+  \begin{itemize}
+    \item Is the variable a level, log level, growth rate, or change?
+    \item Is there a trend?
+    \item Are there breaks: crises, pandemics, wars, policy-regime changes?
+    \item Are there outliers or measurement changes?
+    \item Is the frequency annual, quarterly, monthly, or daily?
+  \end{itemize}
+
+  \begin{block}{Practical rule}
+    A macro regression that has not been preceded by a time-series plot is easy to misunderstand.
+  \end{block}
+\end{frame}
+
+\begin{frame}{Levels, Logs, and Growth Rates}
+  For a positive variable \(Y_t\), define the log level:
+  \[
+    y_t=\log(Y_t).
+  \]
+  The log growth rate is
+  \[
+    \Delta y_t
+    =
+    \log(Y_t)-\log(Y_{t-1})
+    \approx
+    \frac{Y_t-Y_{t-1}}{Y_{t-1}}.
+  \]
+
+  \begin{itemize}
+    \item GDP level is usually trending.
+    \item GDP growth is often closer to stationary.
+    \item Inflation is already a rate of price growth.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Stationarity}
+  \hypertarget{main:stationarity}{}
+  A time series is weakly stationary if:
+  \[
+    \E[y_t]=\mu \quad \text{for all }t,
+  \]
+  \[
+    \Var(y_t)=\sigma_y^2 \quad \text{for all }t,
+  \]
+  and
+  \[
+    \Cov(y_t,y_{t-k})
+  \]
+  depends on the lag \(k\), not on the calendar date \(t\).
+
+  \begin{block}{Intuition}
+    The process can be persistent, but its basic probabilistic behavior is stable over time.
+  \end{block}
+  \derivbutton{ar-stationarity}
+\end{frame}
+
+\begin{frame}{Autocorrelation}
+  The lag-\(k\) autocorrelation is
+  \[
+    \rho_k
+    =
+    \Corr(y_t,y_{t-k})
+    =
+    \frac{\Cov(y_t,y_{t-k})}{\Var(y_t)}.
+  \]
+
+  \begin{itemize}
+    \item If \(\rho_1\) is large, the series is persistent.
+    \item If \(\rho_k\) decays slowly, shocks fade slowly.
+    \item The autocorrelation function is a basic descriptive tool.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{White Noise}
+  A useful benchmark is white noise:
+  \[
+    \varepsilon_t \sim (0,\sigma^2),\qquad
+    \Cov(\varepsilon_t,\varepsilon_s)=0 \quad \text{for }t\neq s.
+  \]
+
+  \begin{itemize}
+    \item White noise is unpredictable from its own past.
+    \item It can still have large variance.
+    \item Many macro models describe observed variables as responses to shocks.
+  \end{itemize}
+
+  \begin{block}{Do not confuse}
+    White noise means no serial correlation. It does not mean economically unimportant.
+  \end{block}
+\end{frame}
+
+\section{Univariate Dynamics}
+
+\begin{frame}{The AR(1) Model}
+  \hypertarget{main:ar1}{}
+  The simplest persistent time-series model is
+  \[
+    y_t = c+\phi y_{t-1}+\varepsilon_t,
+    \qquad \varepsilon_t \sim (0,\sigma^2).
+  \]
+
+  \begin{itemize}
+    \item \(c\) controls the unconditional mean.
+    \item \(\phi\) measures persistence.
+    \item \(\varepsilon_t\) is the one-period-ahead forecast error.
+  \end{itemize}
+
+  \begin{block}{Stationarity condition}
+    The AR(1) is stationary if \(|\phi|<1\).
+  \end{block}
+  \derivbutton{ar-stationarity}
+\end{frame}
+
+\begin{frame}{Interpreting Persistence}
+  Suppose
+  \[
+    y_t=c+\phi y_{t-1}+\varepsilon_t.
+  \]
+
+  If a shock raises \(y_t\) by 1 today, the expected effect is:
+  \[
+    1,\quad \phi,\quad \phi^2,\quad \phi^3,\ldots
+  \]
+  over future periods.
+
+  \begin{itemize}
+    \item \(\phi=0.2\): shock disappears quickly.
+    \item \(\phi=0.8\): shock is persistent.
+    \item \(\phi=1\): shock never dies out; this is a unit root.
+  \end{itemize}
+  \derivbutton{ar-forecast}
+\end{frame}
+
+\begin{frame}{Forecasting with an AR(1)}
+  The one-step-ahead forecast is
+  \[
+    \widehat{y}_{t+1|t}=\widehat{c}+\widehat{\phi}y_t.
+  \]
+
+  The \(h\)-step-ahead forecast is
+  \[
+    \widehat{y}_{t+h|t}
+    =
+    \widehat{\mu}
+    +
+    \widehat{\phi}^{\,h}(y_t-\widehat{\mu}),
+    \qquad
+    \widehat{\mu}=\frac{\widehat{c}}{1-\widehat{\phi}}.
+  \]
+
+  \begin{block}{Interpretation}
+    Forecasts revert to the mean if \(|\widehat{\phi}|<1\). They do not revert if \(\widehat{\phi}\) is close to one.
+  \end{block}
+\end{frame}
+
+\begin{frame}{Estimating the AR(1)}
+  Estimate
+  \[
+    y_t=c+\phi y_{t-1}+\varepsilon_t
+  \]
+  by OLS on observations \(t=2,\ldots,T\).
+
+  \begin{itemize}
+    \item Dependent variable: \(y_t\).
+    \item Regressor: \(y_{t-1}\).
+    \item Coefficient: persistence.
+    \item Residual: forecast error, not necessarily a structural shock.
+  \end{itemize}
+
+  \begin{block}{Small-sample warning}
+    With highly persistent data and small \(T\), estimates and standard errors can be fragile.
+  \end{block}
+\end{frame}
+
+\begin{frame}{Unit Roots}
+  A unit-root process has
+  \[
+    y_t=y_{t-1}+\varepsilon_t.
+  \]
+
+  Then
+  \[
+    y_t=y_0+\sum_{s=1}^{t}\varepsilon_s.
+  \]
+
+  \begin{itemize}
+    \item Shocks have permanent effects.
+    \item The variance grows with time.
+    \item Usual stationary regression intuition breaks down.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Spurious Regression}
+  \hypertarget{main:spurious}{}
+  If two unrelated variables both trend or both have unit roots, the regression
+  \[
+    y_t=\alpha+\beta x_t+u_t
+  \]
+  can look impressive even when \(x_t\) has no economic effect on \(y_t\).
+
+  \begin{block}{Symptom}
+    High \(R^2\), significant \(t\)-statistics, and strongly autocorrelated residuals in a regression of unrelated trending series.
+  \end{block}
+
+  \begin{itemize}
+    \item Plot the data.
+    \item Consider growth rates or first differences.
+    \item Check whether there is a cointegrating relationship.
+  \end{itemize}
+  \derivbutton{spurious}
+\end{frame}
+
+\begin{frame}{Cointegration}
+  Two series can each be nonstationary, but a linear combination can be stationary:
+  \[
+    y_t-\beta x_t \quad \text{is stationary}.
+  \]
+
+  \begin{block}{Intuition}
+    The two variables may drift over time, but they do not drift arbitrarily far apart.
+  \end{block}
+
+  Examples where cointegration may be plausible:
+  \begin{itemize}
+    \item consumption and income;
+    \item short and long interest rates;
+    \item prices in closely connected markets;
+    \item money, prices, and output under some monetary theories.
+  \end{itemize}
+\end{frame}
+
+\section{Multivariate Dynamics}
+
+\begin{frame}{Why Multivariate Models?}
+  Macro variables are jointly determined.
+
+  \begin{itemize}
+    \item Inflation affects monetary policy.
+    \item Monetary policy affects output and inflation.
+    \item Output affects unemployment, tax revenue, and credit.
+    \item Financial variables react quickly to expectations.
+  \end{itemize}
+
+  \begin{block}{Problem}
+    A single-equation model can hide feedback among variables.
+  \end{block}
+\end{frame}
+
+\begin{frame}{The VAR(1) Model}
+  \hypertarget{main:var1}{}
+  Let
+  \[
+    z_t=
+    \begin{bmatrix}
+      y_t\\
+      \pi_t\\
+      i_t
+    \end{bmatrix}.
+  \]
+
+  A VAR(1) is
+  \[
+    z_t=a+A z_{t-1}+u_t,
+    \qquad
+    \E[u_t]=0,\quad
+    \E[u_tu_t']=\Sigma_u.
+  \]
+
+  \begin{itemize}
+    \item Each variable is regressed on lagged values of all variables.
+    \item The matrix \(A\) summarizes dynamic interactions.
+    \item \(u_t\) is a vector of reduced-form forecast errors.
+  \end{itemize}
+  \derivbutton{var-companion}
+\end{frame}
+
+\begin{frame}{VAR Equations in Words}
+  A three-variable VAR says:
+  \[
+    \text{output today}
+    =
+    \text{lags of output, inflation, interest rates}
+    +
+    \text{forecast error}.
+  \]
+  \[
+    \text{inflation today}
+    =
+    \text{lags of output, inflation, interest rates}
+    +
+    \text{forecast error}.
+  \]
+  \[
+    \text{interest rate today}
+    =
+    \text{lags of output, inflation, interest rates}
+    +
+    \text{forecast error}.
+  \]
+
+  \begin{block}{Beginner intuition}
+    A VAR is a disciplined way to let macro variables predict each other dynamically.
+  \end{block}
+\end{frame}
+
+\begin{frame}{Choosing the Lag Length}
+  A VAR(\(p\)) uses \(p\) lags:
+  \[
+    z_t=a+A_1z_{t-1}+\cdots+A_pz_{t-p}+u_t.
+  \]
+
+  More lags can capture richer dynamics but cost degrees of freedom.
+
+  \begin{itemize}
+    \item Use economic judgment about timing.
+    \item Check residual autocorrelation.
+    \item Compare information criteria such as \(\AIC\) and \(\BIC\).
+    \item Remember that macro samples are often small.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Granger Causality}
+  Variable \(x_t\) Granger-causes \(y_t\) if lags of \(x_t\) help forecast \(y_t\) after controlling for lags of \(y_t\).
+
+  Example:
+  \[
+    y_t=\alpha+\rho y_{t-1}+\gamma x_{t-1}+u_t.
+  \]
+  Test
+  \[
+    H_0:\gamma=0.
+  \]
+
+  \begin{block}{Important}
+    Granger causality is predictive content. It is not automatically causal in the treatment-effect sense.
+  \end{block}
+\end{frame}
+
+\begin{frame}{Impulse Responses}
+  \hypertarget{main:irf}{}
+  An impulse response traces what happens after a shock.
+
+  \begin{itemize}
+    \item Shock: an unexpected movement in one variable or structural disturbance.
+    \item Response: predicted path of variables after the shock.
+    \item Horizon: period \(0,1,2,\ldots,H\).
+  \end{itemize}
+
+  For a VAR(1), if the initial shock is \(s\), then
+  \[
+    \IRF(h)=A^h s.
+  \]
+
+  \derivbutton{irf-recursion}
+\end{frame}
+
+\begin{frame}{Reduced-Form Errors Are Not Structural Shocks}
+  A VAR residual \(u_t\) is a forecast error:
+  \[
+    z_t-\E[z_t\mid z_{t-1},z_{t-2},\ldots].
+  \]
+
+  But a structural shock is an economically meaningful disturbance:
+  \begin{itemize}
+    \item monetary-policy shock;
+    \item technology shock;
+    \item demand shock;
+    \item fiscal spending shock.
+  \end{itemize}
+
+  \begin{block}{Identification problem}
+    The data give reduced-form forecast errors. Turning them into structural shocks requires assumptions.
+  \end{block}
+\end{frame}
+
+\begin{frame}{Common Identification Strategies}
+  Macroeconomists identify shocks using restrictions or external information.
+
+  \begin{itemize}
+    \item \textbf{Recursive ordering:} some variables react within the period, others react with delay.
+    \item \textbf{Sign restrictions:} a monetary tightening should raise rates and lower prices/output over some horizon.
+    \item \textbf{External instruments:} use high-frequency surprises or narrative measures as shock proxies.
+    \item \textbf{Natural experiments:} use institutional rules or policy discontinuities when available.
+  \end{itemize}
+
+  \begin{block}{Connection to earlier lectures}
+    This is the macro version of the same causal problem: what variation identifies the effect?
+  \end{block}
+\end{frame}
+
+\begin{frame}{Local Projections}
+  A popular alternative to VAR impulse responses is the local projection:
+  \[
+    y_{t+h}=\alpha_h+\beta_h shock_t+\Gamma_h'controls_t+e_{t+h}.
+  \]
+
+  Estimate a separate regression for each horizon \(h\).
+
+  \begin{itemize}
+    \item Flexible and easy to explain.
+    \item Works naturally with nonlinearities and interactions.
+    \item Still requires an identified shock.
+    \item Standard errors must handle serial correlation across horizons.
+  \end{itemize}
+\end{frame}
+
+\section{Practical Workflow}
+
+\begin{frame}{A Basic Macroeconometric Workflow}
+  \begin{enumerate}
+    \item State the question: description, forecast, or structural effect.
+    \item Define variables, frequency, sample, transformations, and timing.
+    \item Plot all variables.
+    \item Decide levels, logs, growth rates, or differences.
+    \item Estimate a simple benchmark model.
+    \item Check residuals and robustness.
+    \item For causal claims, state the identifying assumptions.
+    \item Report magnitudes in economic units.
+  \end{enumerate}
+\end{frame}
+
+\begin{frame}{Python Example for This Lecture}
+  The script
+  \[
+    \texttt{lectures/code/lecture-10-macroeconometrics.py}
+  \]
+  demonstrates three ideas:
+  \begin{itemize}
+    \item estimating an AR(1) and forecasting;
+    \item seeing a spurious regression from unrelated random walks;
+    \item estimating a two-variable VAR and computing impulse responses.
+  \end{itemize}
+
+  \begin{block}{Student task}
+    Change the persistence parameter and watch how forecasts and impulse responses change.
+  \end{block}
+\end{frame}
+
+\begin{frame}{What to Report in a Basic Macro Exercise}
+  Report enough for the reader to reconstruct the analysis:
+  \begin{itemize}
+    \item variables, definitions, units, and data frequency;
+    \item sample start/end dates and missing-data treatment;
+    \item transformations: log, difference, annualization, detrending;
+    \item model specification and lag length;
+    \item standard-error choice;
+    \item diagnostics: residual autocorrelation, stability, outliers;
+    \item identification assumptions for shocks;
+    \item robustness to sample period and lag length.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Common Beginner Mistakes}
+  \begin{itemize}
+    \item Regressing two trending variables in levels and treating the result as causal.
+    \item Calling Granger causality ``true causality.''
+    \item Forgetting that policy responds to the economy.
+    \item Reading a VAR residual as a structural shock without identification.
+    \item Using too many lags in a small quarterly sample.
+    \item Ignoring breaks such as crises or major policy-regime changes.
+    \item Reporting coefficients without translating them into economic units.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Takeaways}
+  \begin{enumerate}
+    \item Macro data are dynamic: the past predicts the present.
+    \item Stationarity matters because many standard tools rely on stable distributions.
+    \item AR models teach persistence and forecasting.
+    \item VARs describe joint dynamics among macro variables.
+    \item Impulse responses are useful, but structural interpretation needs identification.
+    \item Always separate forecasting success from causal credibility.
+  \end{enumerate}
+\end{frame}
+
+\appendix
+
+\begin{frame}{Appendix A1: AR(1) Mean and Stationarity}
+  \hypertarget{app:ar-stationarity}{}
+  Start with
+  \[
+    y_t=c+\phi y_{t-1}+\varepsilon_t,\qquad \E[\varepsilon_t]=0.
+  \]
+  If the mean is constant, \(\E[y_t]=\E[y_{t-1}]=\mu\). Then
+  \[
+    \mu=c+\phi\mu
+    \quad\Rightarrow\quad
+    \mu=\frac{c}{1-\phi}.
+  \]
+  Recursive substitution gives
+  \[
+    y_t=\mu+\phi^j(y_{t-j}-\mu)+\sum_{\ell=0}^{j-1}\phi^\ell\varepsilon_{t-\ell}.
+  \]
+  For the influence of the distant past to vanish, we need \(|\phi|<1\).
+  \backbutton{ar1}
+\end{frame}
+
+\begin{frame}{Appendix A2: AR(1) Variance}
+  If \(|\phi|<1\), write
+  \[
+    y_t-\mu=\phi(y_{t-1}-\mu)+\varepsilon_t.
+  \]
+  Taking variances and using \(\Cov(y_{t-1},\varepsilon_t)=0\):
+  \[
+    \Var(y_t)=\phi^2\Var(y_{t-1})+\sigma^2.
+  \]
+  Stationarity means \(\Var(y_t)=\Var(y_{t-1})=\sigma_y^2\). Hence
+  \[
+    \sigma_y^2=\phi^2\sigma_y^2+\sigma^2
+    \quad\Rightarrow\quad
+    \sigma_y^2=\frac{\sigma^2}{1-\phi^2}.
+  \]
+  This is finite only if \(|\phi|<1\).
+  \backbutton{stationarity}
+\end{frame}
+
+\begin{frame}{Appendix A3: AR(1) Forecast Formula}
+  \hypertarget{app:ar-forecast}{}
+  With mean \(\mu=c/(1-\phi)\),
+  \[
+    y_t-\mu=\phi(y_{t-1}-\mu)+\varepsilon_t.
+  \]
+  The one-step conditional expectation is
+  \[
+    \E[y_{t+1}-\mu\mid y_t]=\phi(y_t-\mu).
+  \]
+  Iterating forward:
+  \[
+    \E[y_{t+h}\mid y_t]
+    =
+    \mu+\phi^h(y_t-\mu).
+  \]
+  The same logic gives shock responses \(1,\phi,\phi^2,\ldots\).
+  \backbutton{ar1}
+\end{frame}
+
+\begin{frame}{Appendix A4: Why Unit Roots Create Trouble}
+  \hypertarget{app:spurious}{}
+  If
+  \[
+    y_t=y_{t-1}+\varepsilon_t,
+  \]
+  then
+  \[
+    y_t=y_0+\sum_{s=1}^t\varepsilon_s.
+  \]
+  The variance is
+  \[
+    \Var(y_t)=t\sigma^2
+  \]
+  when shocks are independent with variance \(\sigma^2\).
+
+  Since the variance changes with \(t\), the process is not stationary. Two independent random walks can appear related because both wander persistently.
+  \backbutton{spurious}
+\end{frame}
+
+\begin{frame}{Appendix A5: VAR Companion Form}
+  \hypertarget{app:var-companion}{}
+  A VAR(\(p\)) is
+  \[
+    z_t=a+A_1z_{t-1}+\cdots+A_pz_{t-p}+u_t.
+  \]
+  Stack current and lagged values:
+  \[
+    Z_t=
+    \begin{bmatrix}
+      z_t\\z_{t-1}\\ \vdots \\z_{t-p+1}
+    \end{bmatrix}.
+  \]
+  Then
+  \[
+    Z_t=\alpha+FZ_{t-1}+U_t.
+  \]
+  This turns the VAR(\(p\)) into a larger VAR(1), which makes forecasting and impulse-response calculations easier.
+  \backbutton{var1}
+\end{frame}
+
+\begin{frame}{Appendix A6: VAR Impulse Response Recursion}
+  \hypertarget{app:irf-recursion}{}
+  For a VAR(1),
+  \[
+    z_t=a+Az_{t-1}+u_t.
+  \]
+  Suppose a shock changes \(z_t\) by vector \(s\) at horizon 0.
+  \[
+    \IRF(0)=s.
+  \]
+  One period later:
+  \[
+    \IRF(1)=A s.
+  \]
+  Two periods later:
+  \[
+    \IRF(2)=A^2 s.
+  \]
+  Therefore
+  \[
+    \IRF(h)=A^h s.
+  \]
+  \backbutton{irf}
+\end{frame}
+
+\begin{frame}{Appendix A7: Cholesky Identification}
+  Suppose reduced-form errors satisfy
+  \[
+    \E[u_tu_t']=\Sigma_u.
+  \]
+  Cholesky identification chooses a lower-triangular matrix \(B\) such that
+  \[
+    \Sigma_u=BB'.
+  \]
+  Then
+  \[
+    u_t=B\eta_t,\qquad \E[\eta_t\eta_t']=I.
+  \]
+  The first structural shock can affect all variables contemporaneously, the second cannot affect the first contemporaneously, and so on. This is an identifying assumption, not a fact delivered by the data.
+\end{frame}
+
+\begin{frame}{Appendix A8: Serial Correlation and Standard Errors}
+  In a simple regression
+  \[
+    y_t=\alpha+\beta x_t+u_t,
+  \]
+  usual OLS standard errors assume errors are not serially correlated.
+
+  If \(u_t\) is correlated with \(u_{t-1}\), then the usual standard error can be too small.
+
+  Common responses:
+  \begin{itemize}
+    \item model the dynamics directly;
+    \item use heteroskedasticity-and-autocorrelation consistent standard errors;
+    \item aggregate or transform the data only when economically justified;
+    \item be transparent about small-sample uncertainty.
+  \end{itemize}
+\end{frame}
+
+\end{document}

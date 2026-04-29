@@ -1,0 +1,499 @@
+\input{tufte-style.tex}
+
+\newcommand{\Corr}{\mathrm{Corr}}
+
+\title{Applied Econometrics: Session 10\\A Basic Introduction to Macroeconometrics}
+\author{PhD Econometrics}
+\date{}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+Macroeconometrics studies aggregate economic time series such as output, inflation, unemployment, interest rates, exchange rates, credit, and fiscal variables. This introductory lecture explains why macro data require special care: observations are ordered in time, variables are persistent, shocks hit many variables at once, and policy responds to economic conditions. The notes introduce time-series notation, transformations, stationarity, autocorrelation, autoregressions, unit roots, spurious regression, cointegration, vector autoregressions, impulse responses, and the identification problem behind structural macro shocks.
+\end{abstract}
+
+\begin{boxD}
+\textbf{Reading and objectives.} There is no single required textbook chapter for this introductory session. The goal is to give students enough language to read applied macroeconometric papers and to avoid the most common beginner mistakes. The accompanying course script is \texttt{lectures/code/lecture-10-macroeconometrics.py}.
+
+By the end of this session students should be able to:
+\begin{itemize}
+    \item explain how time-series data differ from cross-sectional data;
+    \item distinguish description, forecasting, and structural causal analysis;
+    \item define lags, differences, growth rates, stationarity, and autocorrelation;
+    \item estimate and interpret a simple autoregression;
+    \item explain why unit roots can produce spurious regression results;
+    \item describe what a vector autoregression does;
+    \item interpret an impulse response as a dynamic response to a shock;
+    \item explain why identifying structural shocks requires assumptions.
+\end{itemize}
+\end{boxD}
+
+\section{Why Macroeconometrics Is Different}
+
+The econometric methods studied earlier in the course often use micro data: people, firms, schools, regions, or municipalities. The central question is usually causal: what is the effect of a treatment, policy, or exposure? Macroeconometrics uses many of the same statistical principles, but the data structure is different. Observations are indexed by time. The past is informative about the present. One shock can move many variables at the same time. Policy is usually endogenous because governments and central banks react to the state of the economy.
+
+Macroeconometrics therefore asks questions such as:
+\begin{itemize}
+    \item How persistent is inflation?
+    \item Does unemployment help forecast inflation?
+    \item What happens to output after an increase in interest rates?
+    \item Did government spending raise output, or did spending rise because output was already weak?
+    \item Are consumption and income tied together in the long run?
+\end{itemize}
+
+\begin{boxD}
+\textbf{Core message.} In macroeconometrics, time dependence is not just a nuisance in the error term. It is often the main object of interest.
+\end{boxD}
+
+The most important habit is to separate three tasks. First, description asks what happened. For example, inflation rose before unemployment fell. Second, forecasting asks what will happen next. For example, next quarter's inflation may be predicted using current inflation, output growth, and energy prices. Third, structural analysis asks what caused what. For example, what is the effect of an unexpected monetary tightening on output and inflation?
+
+These tasks are related but not identical. A variable can be useful for forecasting without being an exogenous cause. Weather helps forecast umbrella sales, but umbrellas do not cause rain. In macroeconomics the problem is more difficult because policy variables respond to current and expected economic conditions.
+
+\section{Timing and Notation}
+
+A time series is a sequence
+\[
+    y_1,y_2,\ldots,y_T.
+\]
+The subscript \(t\) denotes time. It could be a year, quarter, month, week, or day. If \(y_t\) is GDP growth in quarter \(t\), then \(y_{t-1}\) is GDP growth in the previous quarter.
+
+\begin{defN}[Lag]
+The first lag of \(y_t\) is \(y_{t-1}\). The \(k\)-th lag is \(y_{t-k}\). A lag is simply a past value of the same variable.
+\end{defN}
+
+The lag operator \(L\) is a compact notation:
+\[
+    Ly_t=y_{t-1},\qquad L^2y_t=y_{t-2}.
+\]
+Differences are written as
+\[
+    \Delta y_t=y_t-y_{t-1}=(1-L)y_t.
+\]
+
+Students often underestimate how much notation matters in macroeconometrics. If the timing is unclear, the economic interpretation is unclear. A regression of output growth today on the interest rate today mixes policy reaction and policy effects. A regression of output growth tomorrow on the interest rate today has a different timing interpretation.
+
+\section{Plot First}
+
+The first step in any macroeconometric exercise is not a regression. It is a plot. The plot should answer basic questions:
+\begin{itemize}
+    \item Is the variable a level, log level, growth rate, or change?
+    \item Does it have a trend?
+    \item Are there visible recessions, crises, pandemics, wars, or policy-regime changes?
+    \item Are there outliers?
+    \item Did the data definition change?
+    \item Is the sample long enough for the proposed model?
+\end{itemize}
+
+Plotting is not a substitute for econometric analysis, but it prevents many mistakes. A regression that treats a trending level as stationary can look precise while answering the wrong question.
+
+\section{Levels, Logs, and Growth Rates}
+
+Many macro variables are positive and grow over time. GDP, prices, money, and credit are common examples. For a positive variable \(Y_t\), define the log level
+\[
+    y_t=\log(Y_t).
+\]
+The change in log level is approximately the growth rate:
+\[
+    \Delta y_t
+    =
+    \log(Y_t)-\log(Y_{t-1})
+    \approx
+    \frac{Y_t-Y_{t-1}}{Y_{t-1}}.
+\]
+This approximation is one reason macroeconomists often work with logs.
+
+\begin{exmp}[GDP level versus GDP growth]
+Real GDP in levels usually trends upward over long samples. The level in 2025 is likely much larger than the level in 1980 because the economy has grown. A regression using GDP levels may mostly pick up the shared trend. GDP growth, by contrast, asks how fast the economy is growing from one period to the next. It is often closer to a stable time-series process.
+\end{exmp}
+
+Inflation is already a growth rate of prices. If \(P_t\) is the price level, then inflation is approximately
+\[
+    \pi_t = \Delta \log(P_t).
+\]
+Interest rates and unemployment rates are already rates, so taking logs is not always natural. Transformations should follow the economic meaning of the variable, not a mechanical rule.
+
+\section{Stationarity}
+
+\begin{defN}[Weak stationarity]
+A time series \(y_t\) is weakly stationary if
+\[
+    \E[y_t]=\mu
+\]
+does not depend on \(t\),
+\[
+    \Var(y_t)=\sigma_y^2
+\]
+does not depend on \(t\), and
+\[
+    \Cov(y_t,y_{t-k})
+\]
+depends on the lag \(k\), not on the date \(t\).
+\end{defN}
+
+Stationarity does not mean that the series is constant. It can move a lot. It can be persistent. It can have booms and recessions. The requirement is that its probabilistic behavior is stable over time.
+
+Why does stationarity matter? Many familiar regression and forecasting results rely on averages settling down as the sample grows. If the mean, variance, or dependence structure changes over time, the usual logic becomes unreliable. Nonstationarity is not automatically fatal, but it must be handled deliberately.
+
+\begin{boxF}
+\textbf{Beginner warning.} A variable that trends upward is usually not stationary in levels. Do not run a regression just because the spreadsheet has columns of numbers.
+\end{boxF}
+
+\section{Autocorrelation}
+
+\begin{defN}[Autocorrelation]
+The lag-\(k\) autocorrelation is
+\[
+    \rho_k
+    =
+    \Corr(y_t,y_{t-k})
+    =
+    \frac{\Cov(y_t,y_{t-k})}{\Var(y_t)}.
+\]
+\end{defN}
+
+Autocorrelation measures persistence. If \(\rho_1\) is high, then a high value today predicts a high value next period. If autocorrelation dies out slowly, shocks are long-lasting. If autocorrelation is near zero, the series is much less predictable from its own past.
+
+The autocorrelation function is a simple diagnostic plot of \(\rho_k\) against \(k\). It is useful for seeing whether a series behaves like white noise, a persistent stationary process, or a near-unit-root process.
+
+\begin{defN}[White noise]
+A white-noise process \(\varepsilon_t\) has mean zero, constant variance, and no serial correlation:
+\[
+    \E[\varepsilon_t]=0,\qquad
+    \Var(\varepsilon_t)=\sigma^2,\qquad
+    \Cov(\varepsilon_t,\varepsilon_s)=0\quad\text{for }t\neq s.
+\]
+\end{defN}
+
+White noise is unpredictable from its own past. It does not mean unimportant. A large unexpected monetary-policy shock may be modeled as serially uncorrelated, but it can have large economic effects.
+
+\section{The Autoregressive Model}
+
+The simplest model of persistence is the autoregression of order one:
+\[
+    y_t=c+\phi y_{t-1}+\varepsilon_t.
+\]
+This is called an AR(1) model.
+
+\begin{defN}[AR(1)]
+An AR(1) model writes the current value of a series as a constant, a multiple of its previous value, and an innovation:
+\[
+    y_t=c+\phi y_{t-1}+\varepsilon_t.
+\]
+\end{defN}
+
+The coefficient \(\phi\) measures persistence. If \(\phi=0\), the past does not predict the present after the constant. If \(\phi=0.8\), high values tend to be followed by high values. If \(\phi=1\), the model has a unit root and shocks are permanent.
+
+\begin{thmN}[AR(1) mean]
+If \(|\phi|<1\), the AR(1) model has unconditional mean
+\[
+    \mu=\frac{c}{1-\phi}.
+\]
+\end{thmN}
+
+\begin{proof}
+Take expectations of
+\[
+    y_t=c+\phi y_{t-1}+\varepsilon_t.
+\]
+If the process is stationary, \(\E[y_t]=\E[y_{t-1}]=\mu\), and if \(\E[\varepsilon_t]=0\), then
+\[
+    \mu=c+\phi\mu.
+\]
+Solving gives
+\[
+    \mu=\frac{c}{1-\phi}.
+\]
+\end{proof}
+
+The stationarity condition \(|\phi|<1\) has a direct intuition. A shock today affects the future by
+\[
+    1,\phi,\phi^2,\phi^3,\ldots.
+\]
+If \(|\phi|<1\), these effects eventually fade. If \(\phi=1\), the shock never disappears.
+
+\subsection{Forecasting with an AR(1)}
+
+Suppose the AR(1) is stationary with mean \(\mu=c/(1-\phi)\). Then
+\[
+    y_t-\mu=\phi(y_{t-1}-\mu)+\varepsilon_t.
+\]
+The \(h\)-period-ahead forecast is
+\[
+    \E[y_{t+h}\mid y_t]
+    =
+    \mu+\phi^h(y_t-\mu).
+\]
+Thus forecasts revert to the mean when \(|\phi|<1\). The speed of mean reversion depends on \(\phi\). If \(\phi\) is close to zero, the forecast quickly returns to the mean. If \(\phi\) is close to one, the forecast remains close to the current value for many periods.
+
+\begin{exmp}[Persistence]
+Suppose output growth has mean \(2\), current growth is \(4\), and \(\phi=0.5\). The one-period forecast is
+\[
+    2+0.5(4-2)=3.
+\]
+The two-period forecast is
+\[
+    2+0.5^2(4-2)=2.5.
+\]
+Now suppose \(\phi=0.9\). The one-period forecast is \(3.8\), and the two-period forecast is \(3.62\). High persistence makes deviations last.
+\end{exmp}
+
+\section{Unit Roots and Spurious Regression}
+
+A unit root is the boundary case
+\[
+    y_t=y_{t-1}+\varepsilon_t.
+\]
+Substituting repeatedly gives
+\[
+    y_t=y_0+\sum_{s=1}^{t}\varepsilon_s.
+\]
+Each shock permanently changes the level of the series.
+
+If \(\varepsilon_t\) has variance \(\sigma^2\), then
+\[
+    \Var(y_t)=t\sigma^2
+\]
+under the simplest random-walk assumptions. The variance grows with time, so the process is not stationary.
+
+\begin{boxF}
+\textbf{Spurious regression problem.} Two unrelated random walks can appear highly related in levels because both wander persistently. A regression of one on the other can produce a high \(R^2\) and significant-looking \(t\)-statistics even when there is no economic relationship.
+\end{boxF}
+
+This does not mean that macroeconomists should always difference every variable. Differencing removes long-run information. The correct response depends on the economic question and the time-series properties of the variables.
+
+\section{Cointegration}
+
+\begin{defN}[Cointegration]
+Two nonstationary series \(y_t\) and \(x_t\) are cointegrated if some linear combination is stationary:
+\[
+    y_t-\beta x_t
+    \quad \text{is stationary}.
+\]
+\end{defN}
+
+Cointegration means the variables may drift over time, but not arbitrarily far apart. For example, consumption and income may both have stochastic trends, but economic theory may imply that their ratio or difference is stable in the long run. Short and long interest rates may also share a common trend.
+
+Cointegration is important because it separates meaningless shared trending from a meaningful long-run relationship. If variables are cointegrated, a model in differences alone may throw away the long-run equilibrium relation.
+
+\section{Vector Autoregressions}
+
+Macroeconomic variables interact. Inflation affects interest-rate decisions. Interest rates affect output and inflation. Output affects unemployment and fiscal revenue. A vector autoregression allows several variables to predict each other.
+
+Let
+\[
+    z_t=
+    \begin{bmatrix}
+        y_t\\
+        \pi_t\\
+        i_t
+    \end{bmatrix},
+\]
+where \(y_t\) is output growth, \(\pi_t\) is inflation, and \(i_t\) is the policy rate. A VAR(1) is
+\[
+    z_t=a+Az_{t-1}+u_t.
+\]
+Each variable appears on the left-hand side in one equation. Each equation has lagged values of all variables on the right-hand side.
+
+\begin{defN}[VAR(\(p\))]
+A VAR(\(p\)) model is
+\[
+    z_t=a+A_1z_{t-1}+\cdots+A_pz_{t-p}+u_t.
+\]
+\end{defN}
+
+Choosing \(p\), the number of lags, is a practical issue. More lags allow richer dynamics, but they use degrees of freedom. With quarterly data and three variables, a VAR with four lags already estimates many coefficients. In small samples, a very flexible model can fit past noise and forecast poorly.
+
+\section{Granger Causality}
+
+Granger causality is about prediction. Variable \(x_t\) Granger-causes \(y_t\) if lagged \(x_t\) helps forecast \(y_t\) after controlling for lagged \(y_t\).
+
+For example,
+\[
+    y_t=\alpha+\rho y_{t-1}+\gamma x_{t-1}+u_t.
+\]
+Testing whether \(x_t\) Granger-causes \(y_t\) means testing
+\[
+    H_0:\gamma=0.
+\]
+In a richer VAR, we test whether all relevant lags of \(x_t\) are zero in the equation for \(y_t\).
+
+\begin{boxF}
+\textbf{Terminology warning.} Granger causality is not the same as causal identification in the potential-outcomes sense. It says that past \(x\) has predictive content for \(y\). It does not by itself solve omitted variables, policy feedback, or expectations.
+\end{boxF}
+
+\section{Impulse Responses}
+
+An impulse response traces the predicted path of variables after a shock. In a VAR(1),
+\[
+    z_t=a+Az_{t-1}+u_t.
+\]
+Suppose an initial shock changes \(z_t\) by vector \(s\). The impact response is
+\[
+    IRF(0)=s.
+\]
+One period later the response is
+\[
+    IRF(1)=As.
+\]
+Two periods later it is
+\[
+    IRF(2)=A^2s.
+\]
+In general,
+\[
+    IRF(h)=A^h s.
+\]
+
+Impulse responses are useful because macro effects are dynamic. A monetary tightening might have little effect on output immediately, a larger effect after several quarters, and then a fading effect later. A single coefficient cannot summarize this timing.
+
+\section{Reduced-Form Errors and Structural Shocks}
+
+The residuals \(u_t\) from a VAR are reduced-form forecast errors. They are the parts of the variables not predicted by their own lags. A structural shock is different. It is an economically meaningful disturbance such as a monetary-policy shock, technology shock, demand shock, or fiscal shock.
+
+The data alone usually do not label shocks. If inflation, output, and interest rates all move unexpectedly in the same quarter, which structural shock occurred? Was it monetary policy? Demand? Supply? A financial shock? The reduced-form residuals contain mixtures of structural shocks.
+
+\begin{boxD}
+\textbf{Identification problem.} Turning reduced-form VAR residuals into structural shocks requires extra assumptions. This is the macroeconometric version of the identification problem studied throughout the course.
+\end{boxD}
+
+Common identification strategies include recursive restrictions, sign restrictions, external instruments, high-frequency surprises, narrative measures, and institutional rules. Each strategy brings assumptions. The empirical paper must state and defend those assumptions.
+
+\section{Local Projections}
+
+Local projections provide another way to estimate dynamic responses. Instead of estimating a full VAR and deriving responses recursively, estimate a separate regression for each horizon:
+\[
+    y_{t+h}=\alpha_h+\beta_h shock_t+\Gamma_h'controls_t+e_{t+h}.
+\]
+The coefficient \(\beta_h\) is the response at horizon \(h\).
+
+Local projections are flexible and easy to explain. They are useful with nonlinearities, interactions, state dependence, and panel data. However, they do not avoid the identification problem. The variable called \(shock_t\) must still be credibly identified.
+
+\section{Using the Python Example}
+
+The script \texttt{lectures/code/lecture-10-macroeconometrics.py} has three blocks.
+
+\begin{enumerate}
+    \item The AR(1) block simulates a persistent process, estimates its persistence, and computes forecasts.
+    \item The spurious-regression block simulates two unrelated random walks and regresses one on the other.
+    \item The VAR block simulates two jointly dynamic variables, estimates a VAR(1), and computes impulse responses.
+\end{enumerate}
+
+Students should run the script once, then change the persistence parameters. The most useful experiment is to increase \(\phi\) in the AR(1) block from 0.4 to 0.95. Forecasts become much more persistent, and the distinction between stationary and unit-root behavior becomes easier to see.
+
+\section{Worked Problems}
+
+\subsection*{Problem 1: Log Growth}
+
+Suppose GDP rises from 100 to 103. Compute the exact percentage growth rate and the log growth rate.
+
+\textbf{Solution.} The exact growth rate is
+\[
+    \frac{103-100}{100}=0.03=3\%.
+\]
+The log growth rate is
+\[
+    \log(103)-\log(100)=\log(1.03)\approx 0.02956.
+\]
+Multiplying by 100 gives about \(2.956\%\). For small changes, log growth and percentage growth are close.
+
+\subsection*{Problem 2: AR(1) Mean}
+
+Let
+\[
+    y_t=0.5+0.8y_{t-1}+\varepsilon_t.
+\]
+Find the stationary mean.
+
+\textbf{Solution.}
+\[
+    \mu=\frac{c}{1-\phi}
+    =
+    \frac{0.5}{1-0.8}
+    =
+    \frac{0.5}{0.2}
+    =
+    2.5.
+\]
+
+\subsection*{Problem 3: AR(1) Forecast}
+
+Using the same model, suppose \(y_t=4\). Compute the one-step forecast.
+
+\textbf{Solution.}
+\[
+    \widehat{y}_{t+1|t}=0.5+0.8(4)=3.7.
+\]
+Because the stationary mean is 2.5, the forecast moves from 4 toward 2.5.
+
+\subsection*{Problem 4: Shock Persistence}
+
+If \(\phi=0.75\), what fraction of a one-unit shock remains after four periods?
+
+\textbf{Solution.}
+\[
+    \phi^4=0.75^4\approx 0.316.
+\]
+About 31.6 percent of the initial effect remains.
+
+\subsection*{Problem 5: VAR Interpretation}
+
+Consider a two-variable VAR for output growth \(y_t\) and inflation \(\pi_t\):
+\[
+\begin{bmatrix}
+y_t\\ \pi_t
+\end{bmatrix}
+=
+a+
+\begin{bmatrix}
+0.4 & -0.2\\
+0.1 & 0.6
+\end{bmatrix}
+\begin{bmatrix}
+y_{t-1}\\ \pi_{t-1}
+\end{bmatrix}
++u_t.
+\]
+Interpret the coefficient \(-0.2\).
+
+\textbf{Solution.} Holding lagged output growth fixed, a one-unit increase in lagged inflation predicts a 0.2-unit lower value of current output growth. This is a forecasting relation inside the VAR. It is not automatically a causal effect of inflation on output.
+
+\section{Checklist for Students}
+
+\begin{itemize}
+    \item What is the time unit: year, quarter, month, week, day?
+    \item Is the variable a level, log level, growth rate, rate, or change?
+    \item Have you plotted the series?
+    \item Does the series look trending, stationary, seasonal, or broken by crises?
+    \item Are you doing description, forecasting, or structural causal analysis?
+    \item If using an AR model, what does the persistence coefficient imply?
+    \item If using levels, have you considered unit roots and cointegration?
+    \item If using a VAR, what variables and lags are included?
+    \item Does Granger causality mean predictive content or true causal identification?
+    \item What is the shock in an impulse-response exercise?
+    \item What assumptions identify that shock?
+    \item Are results robust to lag length, sample period, and transformations?
+\end{itemize}
+
+\section{Practice Questions}
+
+\begin{enumerate}
+    \item Why are macro observations usually not independent over time?
+    \item Give one example of a descriptive macro question, one forecasting question, and one structural question.
+    \item Why do macroeconomists often use log differences for GDP?
+    \item What does weak stationarity require?
+    \item What is the difference between white noise and a stationary AR(1)?
+    \item Explain the persistence parameter in an AR(1) model.
+    \item What happens when \(\phi=1\)?
+    \item Why can unrelated random walks generate significant-looking regressions?
+    \item What is cointegration?
+    \item What does a VAR allow that a single-equation AR model does not?
+    \item What does Granger causality mean?
+    \item Why is Granger causality not enough for policy evaluation?
+    \item What is an impulse response?
+    \item Why is a reduced-form VAR residual not automatically a monetary-policy shock?
+    \item Name two ways macroeconomists try to identify structural shocks.
+\end{enumerate}
+
+\end{document}
