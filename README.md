@@ -20,3 +20,4 @@
 | 1 | Lectures 1-2: causal questions, regression, and selection on observables | [PDF](assignments/assignment-1.pdf) | [Code](assignments/code/assignment-1-starter.py) |
 | 2 | Instrumental variables and matching regression | [PDF](assignments/assignment-2.pdf) | [Code](assignments/code/assignment-2-starter.py) |
 | 3 | Difference-in-differences | [PDF](assignments/assignment-3.pdf) | [Code](assignments/code/assignment-3-starter.py) |
+| Take-home exam | Dehejia and Wahba (1999) replication | [PDF](assignments/take-home-exam-dehejia-wahba.pdf) | [Code](assignments/code/dehejia-wahba-exam-starter.py) |

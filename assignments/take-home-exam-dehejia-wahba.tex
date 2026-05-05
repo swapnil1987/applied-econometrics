@@ -1,0 +1,236 @@
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{enumitem}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{listings}
+
+\hypersetup{colorlinks=true, linkcolor=blue, urlcolor=blue}
+\emergencystretch=2em
+
+\lstset{
+  basicstyle=\ttfamily\small,
+  backgroundcolor=\color{gray!10},
+  frame=single,
+  framerule=0pt,
+  breaklines=true,
+  language=Python,
+  showstringspaces=false
+}
+
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\Prob}{\mathbb{P}}
+\newcommand{\ATT}{\mathrm{ATT}}
+\newcommand{\ATE}{\mathrm{ATE}}
+\newcommand{\indep}{\perp\!\!\!\perp}
+\newcommand{\points}[1]{\hfill \textbf{[#1 points]}}
+
+\title{Take-Home Exam: Replicating Dehejia and Wahba (1999)}
+\author{Applied Econometrics}
+\date{}
+
+\begin{document}
+\maketitle
+
+\noindent\textbf{Total: 100 points. Time limit: 24 hours.} This exam asks you to replicate the main empirical logic of Dehejia and Wahba (1999), ``Causal Effects in Nonexperimental Studies: Reevaluating the Evaluation of Training Programs.'' The paper studies whether propensity score methods can recover the experimental benchmark effect of the National Supported Work Demonstration when the experimental control group is replaced by nonexperimental controls from CPS or PSID.
+
+\paragraph{Sources.} Use the paper at
+\begin{center}
+\url{https://users.nber.org/~rdehejia/papers/dehejia_wahba_jasa.pdf}
+\end{center}
+and the data page at
+\begin{center}
+\url{https://users.nber.org/~rdehejia/nswdata2.html}.
+\end{center}
+The NBER data page asks users to cite Dehejia and Wahba (1999), Dehejia and Wahba (2002), and Lalonde (1986). The data are distributed for attributable non-commercial use.
+
+\paragraph{Submission.} Submit:
+\begin{itemize}
+  \item one PDF write-up, maximum 12 pages excluding appendix;
+  \item one Python script or notebook that reproduces every number and figure in your write-up;
+  \item an appendix with any extra tables, code notes, or robustness checks you want to include.
+\end{itemize}
+Your PDF must be readable without opening your code. Your code must run from the course root without manual edits.
+
+\paragraph{Starter data.} Run the following command from the course root:
+\begin{lstlisting}
+python assignments/code/dehejia-wahba-exam-starter.py
+\end{lstlisting}
+It creates cleaned CSV files in \texttt{assignments/data/dehejia\_wahba/}. The main files are:
+\begin{itemize}
+  \item \texttt{nsw\_dw\_experimental.csv}: Dehejia--Wahba NSW treated and experimental controls;
+  \item \texttt{nsw\_treated\_cps.csv}, \texttt{nsw\_treated\_cps2.csv}, \texttt{nsw\_treated\_cps3.csv}: NSW treated plus CPS controls;
+  \item \texttt{nsw\_treated\_psid.csv}, \texttt{nsw\_treated\_psid2.csv}, \texttt{nsw\_treated\_psid3.csv}: NSW treated plus PSID controls.
+\end{itemize}
+The variables are \texttt{treat}, \texttt{age}, \texttt{educ}, \texttt{black}, \texttt{hispanic}, \texttt{married}, \texttt{nodegree}, \texttt{re74}, \texttt{re75}, \texttt{re78}, and \texttt{sample}. The outcome is \texttt{re78}. The pre-treatment variables are all variables except \texttt{treat}, \texttt{re78}, and \texttt{sample}.
+
+\section*{Part A: Paper, Design, and Estimand}
+
+\begin{enumerate}[label=A\arabic*.]
+  \item In your own words, state the empirical question in Dehejia and Wahba (1999). Why is Lalonde's setting useful for judging nonexperimental estimators? \points{3}
+
+  \item Define the treatment, outcome, and comparison groups. Explain the difference between the experimental NSW comparison and the nonexperimental CPS/PSID comparisons. \points{3}
+
+  \item Write the target estimand as an average treatment effect on the treated:
+  \[
+    \ATT = \E[Y_i(1)-Y_i(0)\mid D_i=1].
+  \]
+  Explain why the hard object is \(\E[Y_i(0)\mid D_i=1]\). \points{2}
+
+  \item State the selection-on-observables and overlap assumptions needed for propensity score methods:
+  \[
+    (Y_i(0),Y_i(1)) \indep D_i \mid X_i,
+    \qquad
+    0 < \Prob(D_i=1\mid X_i) < 1.
+  \]
+  Translate both assumptions into plain English for this training-program application. \points{2}
+\end{enumerate}
+
+\section*{Part B: Data Construction and Descriptive Replication}
+
+\begin{enumerate}[label=B\arabic*.]
+  \item Run the starter script and report the number of treated and control observations in each generated dataset. Check that the Dehejia--Wahba experimental file has 185 treated observations and 260 control observations. \points{3}
+
+  \item Make a balance table for the Dehejia--Wahba experimental sample. Report treated and control means for \texttt{age}, \texttt{educ}, \texttt{black}, \texttt{hispanic}, \texttt{married}, \texttt{nodegree}, \texttt{re74}, and \texttt{re75}. Add treated-control differences. \points{4}
+
+  \item Make the same balance table for at least two nonexperimental datasets: one CPS comparison and one PSID comparison. Choose the full CPS/PSID controls or the trimmed CPS3/PSID3 controls, but explain your choice. \points{4}
+
+  \item Based on the balance tables, which control group looks most comparable to the treated group before matching? Which variables make the full CPS or PSID samples look problematic? \points{4}
+\end{enumerate}
+
+\section*{Part C: Experimental Benchmark and Naive Nonexperimental Estimates}
+
+\begin{enumerate}[label=C\arabic*.]
+  \item Using \texttt{nsw\_dw\_experimental.csv}, estimate the experimental benchmark by the difference in mean 1978 earnings:
+  \[
+    \widehat{\tau}_{exp}
+    =
+    \bar{Y}_{78,D=1}
+    -
+    \bar{Y}_{78,D=0}.
+  \]
+  Report the estimate and a heteroskedasticity-robust standard error. The estimate should be close to 1,794 dollars. \points{4}
+
+  \item Estimate the same benchmark using the regression
+  \[
+    re78_i = \alpha + \tau treat_i + u_i.
+  \]
+  Explain why this gives the same coefficient as the difference in means. \points{2}
+
+  \item Replace the experimental controls with each CPS and PSID comparison group. For every generated nonexperimental file, estimate the naive treated-control difference in \texttt{re78}. Put the results in one table with the experimental benchmark in the first row. \points{5}
+
+  \item Explain the direction and size of the naive bias. Use the pre-treatment earnings variables \texttt{re74} and \texttt{re75} in your explanation. \points{4}
+\end{enumerate}
+
+\section*{Part D: Propensity Scores and Common Support}
+
+\begin{enumerate}[label=D\arabic*.]
+  \item For each chosen nonexperimental comparison, estimate a logit propensity score:
+  \[
+    p(X_i)=\Prob(D_i=1\mid X_i)
+    =
+    \Lambda(X_i'\gamma).
+  \]
+  Start with the covariates \texttt{age}, \texttt{educ}, \texttt{black}, \texttt{hispanic}, \texttt{married}, \texttt{nodegree}, \texttt{re74}, and \texttt{re75}. You may add squares or interactions if you explain why. \points{4}
+
+  \item Plot the distribution of estimated propensity scores separately for treated and controls. You may use histograms, kernel densities, or side-by-side empirical CDFs. \points{4}
+
+  \item Report the minimum and maximum estimated propensity score for treated and controls. Identify the common-support region:
+  \[
+    [\max(\min p_i \mid D_i=1,\min p_i \mid D_i=0),
+      \min(\max p_i \mid D_i=1,\max p_i \mid D_i=0)].
+  \]
+  \points{3}
+
+  \item Drop observations outside common support. Report how many treated and control observations remain. Explain why poor overlap is not a small technical problem but a threat to the causal question being answered. \points{4}
+\end{enumerate}
+
+\section*{Part E: Stratification and Matching Replication}
+
+\begin{enumerate}[label=E\arabic*.]
+  \item Implement propensity-score subclassification using five strata. Construct strata using the treated observations' propensity-score quintiles after imposing common support. Within each stratum, estimate
+  \[
+    \widehat{\tau}_s
+    =
+    \bar{Y}_{78,D=1,s}
+    -
+    \bar{Y}_{78,D=0,s}.
+  \]
+  Then compute the ATT-style weighted average
+  \[
+    \widehat{\tau}_{sub}
+    =
+    \sum_s
+    \frac{n_{1s}}{n_1}
+    \widehat{\tau}_s.
+  \]
+  Report each stratum effect, the treated weights, and the final estimate. \points{7}
+
+  \item Check covariate balance after subclassification. For each stratum, compare treated and control means of \texttt{re74}, \texttt{re75}, \texttt{age}, and \texttt{educ}. Summarize whether balance improved relative to Part B. \points{4}
+
+  \item Implement one-nearest-neighbor matching on the estimated propensity score, with replacement, for the ATT. Use only observations in common support. Report the matched ATT:
+  \[
+    \widehat{\tau}_{NN}
+    =
+    \frac{1}{n_1}\sum_{i:D_i=1}
+    \left(Y_i-\sum_{j:D_j=0}w_{ij}Y_j\right),
+  \]
+  where \(w_{ij}=1\) for the nearest matched control and 0 otherwise. \points{6}
+
+  \item Add a caliper rule. For example, refuse a match if the absolute propensity-score distance is greater than 0.01 or greater than 0.2 times the standard deviation of the logit index. Report how many treated observations are kept and how the ATT changes. \points{4}
+
+  \item Put the experimental benchmark, naive estimates, subclassification estimates, nearest-neighbor estimates, and caliper estimates in one table. Which method comes closest to the benchmark? Is closeness alone enough to prove the method is generally valid? \points{4}
+\end{enumerate}
+
+\section*{Part F: Inference, Robustness, and Critique}
+
+\begin{enumerate}[label=F\arabic*.]
+  \item Compute uncertainty for your preferred matching or subclassification estimate. A simple nonparametric bootstrap with at least 200 replications is acceptable. Report the standard error and a 95 percent confidence interval. \points{4}
+
+  \item Try at least one alternative propensity-score specification. Report how the estimated ATT changes. Interpret whether your result is robust or fragile. \points{3}
+
+  \item Write one paragraph explaining the main lesson of Dehejia and Wahba (1999). Your paragraph must mention the experimental benchmark, observable comparability, overlap, and selection on unobservables. \points{3}
+\end{enumerate}
+
+\section*{Part G: Reproducibility and Communication}
+
+\begin{enumerate}[label=G\arabic*.]
+  \item Your code must be organized so that the instructor can rerun it from the course root. It should produce the tables and figures used in your PDF, with clear filenames. \points{4}
+
+  \item Your PDF must contain enough explanation that a reader can understand the methods without reading your code. Use equations where useful, but explain the intuition in words. \points{3}
+
+  \item Include a short citation note for the paper and data. Mention that the data come from the Dehejia--Wahba/Lalonde NSW files hosted by NBER. \points{3}
+\end{enumerate}
+
+\section*{Point Summary}
+\begin{center}
+\begin{tabular}{lcc}
+\toprule
+Part & Topic & Points \\
+\midrule
+A & Paper, design, and estimand & 10 \\
+B & Data construction and descriptives & 15 \\
+C & Benchmark and naive estimates & 15 \\
+D & Propensity scores and common support & 15 \\
+E & Stratification and matching replication & 25 \\
+F & Inference, robustness, and critique & 10 \\
+G & Reproducibility and communication & 10 \\
+\midrule
+Total & & 100 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\section*{Practical Hints}
+
+\begin{itemize}
+  \item In Python, \texttt{pandas}, \texttt{numpy}, \texttt{statsmodels}, and \texttt{sklearn.neighbors.NearestNeighbors} are enough for the whole exam.
+  \item For robust standard errors in \texttt{statsmodels}, use \texttt{fit(cov\_type="HC1")}.
+  \item Be careful with the estimand. Matching the NSW treated units to CPS or PSID controls is an ATT exercise for the NSW treated population, not an ATE for everyone in CPS or PSID.
+  \item Do not match on post-treatment outcomes. The outcome is \texttt{re78}; \texttt{re74} and \texttt{re75} are pre-treatment earnings.
+  \item A beautiful matching estimate is not automatically credible. You must still argue that the observed variables capture the assignment process well enough.
+\end{itemize}
+
+\end{document}
